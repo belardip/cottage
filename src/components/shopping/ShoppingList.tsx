@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
-import { ShoppingCart, Sparkles, Tag, Store, Trash2, ArrowRightLeft, Plus } from 'lucide-react'
+import { ShoppingCart, Tag, Store, Trash2, Plus } from 'lucide-react'
 
 type Item = { id: number; name: string; quantity: number | null; unit: string | null; category: string | null; source: string; storeId: number | null; isChecked: boolean; sortOrder: number; store: { id: number; name: string } | null }
 type StoreType = { id: number; name: string; sortOrder: number; assignedPerson: { name: string } | null }
@@ -44,6 +44,8 @@ const CATEGORY_COLORS: Record<string, string> = {
 export function ShoppingList({ items: initialItems, stores, people }: ShoppingListProps) {
   const [items, setItems] = useState(initialItems)
   const [isPending, startTransition] = useTransition()
+
+  useEffect(() => { setItems(initialItems) }, [initialItems])
   const router = useRouter()
   const [newItem, setNewItem] = useState({ name: '', quantity: '', unit: '', category: '' })
   const [addOpen, setAddOpen] = useState(false)
@@ -257,8 +259,8 @@ function ItemGroup({ title, subtitle, items, stores, people, toggleCheck, change
 
             <Dialog open={stapleOpen === item.id} onOpenChange={open => { setStapleOpen(open ? item.id : null); if (!open) setSelectedPerson('') }}>
               <DialogTrigger asChild>
-                <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" title="Move to staples">
-                  <ArrowRightLeft className="h-3.5 w-3.5" />
+                <Button size="sm" variant="ghost" className="h-7 px-2 shrink-0 text-xs text-muted-foreground">
+                  → Staples
                 </Button>
               </DialogTrigger>
               <DialogContent>

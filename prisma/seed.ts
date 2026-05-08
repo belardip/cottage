@@ -67,8 +67,15 @@ async function main() {
         { name: 'Mixing bowls', category: 'Utensils' },
         { name: 'Blender', category: 'Appliances' },
         { name: 'Coffee maker', category: 'Appliances' },
+        { name: 'Coffee grinder', category: 'Appliances' },
         { name: 'Toaster', category: 'Appliances' },
         { name: 'Electric kettle', category: 'Appliances' },
+        { name: 'SodaStream', category: 'Appliances' },
+        { name: 'Instant Pot / pressure cooker', category: 'Appliances' },
+        { name: 'Air fryer', category: 'Appliances' },
+        { name: 'Rice cooker', category: 'Appliances' },
+        { name: 'Waffle maker', category: 'Appliances' },
+        { name: 'Hand mixer', category: 'Appliances' },
         { name: 'Dish soap', category: 'Cleaning' },
         { name: 'Dish sponge', category: 'Cleaning' },
         { name: 'Dish towels', category: 'Cleaning' },
@@ -108,6 +115,24 @@ async function main() {
       ],
     })
     console.log('✓ Seeded staple suggestions')
+  } else {
+    // Add any new suggestions that may not exist yet
+    const newItems = [
+      { name: 'Coffee grinder', category: 'Appliances' },
+      { name: 'SodaStream', category: 'Appliances' },
+      { name: 'Instant Pot / pressure cooker', category: 'Appliances' },
+      { name: 'Air fryer', category: 'Appliances' },
+      { name: 'Rice cooker', category: 'Appliances' },
+      { name: 'Waffle maker', category: 'Appliances' },
+      { name: 'Hand mixer', category: 'Appliances' },
+    ]
+    for (const item of newItems) {
+      const exists = await db.stapleSuggestion.findFirst({ where: { name: item.name } })
+      if (!exists) {
+        await db.stapleSuggestion.create({ data: item })
+        console.log(`✓ Added new suggestion: ${item.name}`)
+      }
+    }
   }
 }
 

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { generateScheduleAction, resetScheduleAction, skipSlotAction, tradeCookAction } from '@/app/actions/schedule'
+import { createMealAction } from '@/app/actions/meals'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -59,6 +60,13 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
     startTransition(async () => {
       const result = await resetScheduleAction()
       if (result.success) toast.success(result.success)
+    })
+  }
+
+  function handleEmptySlotClick(day: number, type: string) {
+    startTransition(async () => {
+      const id = await createMealAction(day, type)
+      router.push(`/meals/${id}`)
     })
   }
 
@@ -152,11 +160,20 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
                   <div
                     key={type}
                     className={cn(
-                      'rounded-xl border p-3 flex flex-col min-h-32.5 transition-opacity',
+                      'relative rounded-xl border-2 p-3 flex flex-col min-h-32.5 transition-all',
                       isSkipped ? 'opacity-35 bg-muted' : 'bg-card',
-                      isBreakfast ? 'border-accent/50' : 'border-primary/35'
+                      isBreakfast
+                        ? 'border-accent/40 hover:border-accent/80'
+                        : 'border-primary/30 hover:border-primary/70',
+                      !isSkipped && 'cursor-pointer'
                     )}
                   >
+                    {/* Overlay — sits above static content (z-10) but below interactive elements (z-20) */}
+                    {!isSkipped && (meal
+                      ? <Link href={`/meals/${meal.id}`} className="absolute inset-0 rounded-xl z-10" aria-label={meal.name ?? 'Edit meal'} />
+                      : <button className="absolute inset-0 rounded-xl z-10 cursor-pointer" onClick={() => handleEmptySlotClick(day, type)} aria-label="Add meal" />
+                    )}
+
                     {/* Header */}
                     <div className="flex items-center justify-between mb-2">
                       <span className={cn(
@@ -168,25 +185,23 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
                         {isBreakfast ? 'BF' : 'Din'}
                       </span>
                       {!scheduleLocked && (
-                        <Checkbox
-                          className="h-3.5 w-3.5"
-                          checked={isSkipped}
-                          onCheckedChange={checked => handleSkip(day, type, !!checked)}
-                          title="Skip this slot"
-                        />
+                        <div className="relative z-20">
+                          <Checkbox
+                            className="h-3.5 w-3.5"
+                            checked={isSkipped}
+                            onCheckedChange={checked => handleSkip(day, type, !!checked)}
+                            title="Skip this slot"
+                          />
+                        </div>
                       )}
                     </div>
 
                     {/* Meal name — grows to fill space */}
                     <div className="flex-1">
                       {meal ? (
-                        <Link
-                          href={`/meals/${meal.id}`}
-                          className="text-xs font-semibold hover:text-primary line-clamp-2 leading-snug"
-                          title={meal.name ?? 'Unnamed meal'}
-                        >
+                        <span className="text-xs font-semibold line-clamp-2 leading-snug">
                           {meal.name || <span className="text-muted-foreground font-normal italic">Add meal…</span>}
-                        </Link>
+                        </span>
                       ) : (
                         <span className="text-[11px] text-muted-foreground">—</span>
                       )}
@@ -201,6 +216,7 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
                             return scheduleLocked ? (
                               <button
                                 key={name}
+                                className="relative z-20"
                                 onClick={() => handleBadgeClick(key, name)}
                                 disabled={isPending}
                                 title={selected ? `Trade ${selected.name} with ${name}` : `Select ${name} to trade`}
