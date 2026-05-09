@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { loginAction } from '@/app/actions/auth'
 
 export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
+  const router = useRouter()
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -14,6 +16,7 @@ export default function LoginPage() {
     startTransition(async () => {
       const result = await loginAction(password)
       if (result?.error) setError(result.error)
+      else router.push('/schedule')
     })
   }
 

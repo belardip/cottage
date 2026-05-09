@@ -1,7 +1,6 @@
 'use server'
 
 import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
 
 export async function loginAction(password: string) {
   if (!process.env.COTTAGE_PASSWORD) throw new Error('COTTAGE_PASSWORD not set')
@@ -18,5 +17,5 @@ export async function loginAction(password: string) {
     path: '/',
   })
 
-  redirect('/')
+  return { success: true }
 }
