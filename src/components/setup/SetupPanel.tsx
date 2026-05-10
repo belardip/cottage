@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { saveTripDateAction, addStoreAction, updateStoreAction, deleteStoreAction } from '@/app/actions/setup'
+import { resetScheduleAction } from '@/app/actions/schedule'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { Plus, Trash2, Check, X, Pencil, CalendarIcon } from 'lucide-react'
 
@@ -26,6 +29,8 @@ interface SetupPanelProps {
 
 export function SetupPanel({ tripStartDate: initialDate, stores: initialStores, people }: SetupPanelProps) {
   const [isPending, startTransition] = useTransition()
+  const [resetOpen, setResetOpen] = useState(false)
+  const router = useRouter()
   const [tripDate, setTripDate] = useState(initialDate)
   const [calOpen, setCalOpen] = useState(false)
 
@@ -179,6 +184,44 @@ export function SetupPanel({ tripStartDate: initialDate, stores: initialStores, 
           </form>
         </CardContent>
       </Card>
+      <Card className="border-destructive/40">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base text-destructive">Danger Zone</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-3">Permanently erase all meals, ingredients, and cook assignments and unlock the schedule.</p>
+          <Button variant="destructive" size="sm" onClick={() => setResetOpen(true)} disabled={isPending}>
+            Reset Everything
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Dialog open={resetOpen} onOpenChange={setResetOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset everything?</DialogTitle>
+            <DialogDescription>
+              This will permanently erase all meals, ingredients, and cook assignments. The schedule will be unlocked. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResetOpen(false)} disabled={isPending}>Cancel</Button>
+            <Button
+              variant="destructive"
+              disabled={isPending}
+              onClick={() => {
+                startTransition(async () => {
+                  const result = await resetScheduleAction()
+                  setResetOpen(false)
+                  if (result.success) { toast.success(result.success); router.refresh() }
+                })
+              }}
+            >
+              Yes, reset everything
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

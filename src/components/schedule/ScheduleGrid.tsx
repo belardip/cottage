@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { generateScheduleAction, resetScheduleAction, skipSlotAction, tradeCookAction } from '@/app/actions/schedule'
+import { generateScheduleAction, reshuffleScheduleAction, skipSlotAction, tradeCookAction } from '@/app/actions/schedule'
 import { createMealAction } from '@/app/actions/meals'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -56,10 +56,11 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
     })
   }
 
-  function handleReset() {
+  function handleReshuffle() {
     startTransition(async () => {
-      const result = await resetScheduleAction()
-      if (result.success) { toast.success(result.success); router.refresh() }
+      const result = await reshuffleScheduleAction()
+      if (result.error) toast.error(result.error)
+      else { toast.success(result.success!); router.refresh() }
     })
   }
 
@@ -117,9 +118,9 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
         </div>
         <div className="flex gap-2">
           {scheduleLocked ? (
-            <Button variant="outline" onClick={handleReset} disabled={isPending} size="sm">
+            <Button variant="outline" onClick={handleReshuffle} disabled={isPending} size="sm">
               <RefreshCw className="h-4 w-4 mr-1.5" />
-              Reset
+              Reshuffle
             </Button>
           ) : (
             <Button onClick={handleGenerate} disabled={isPending} size="sm">

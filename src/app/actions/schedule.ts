@@ -40,6 +40,27 @@ export async function generateScheduleAction() {
   return { success: 'Schedule generated!' }
 }
 
+export async function reshuffleScheduleAction() {
+  const setting = await db.setting.findFirst()
+  if (!setting) return { error: 'No settings found.' }
+
+  const skippedSlots: string[] = JSON.parse(setting.skippedSlots || '[]')
+  const { bDays, dDays, breakfast, dinner } = generateSchedule(skippedSlots)
+
+  await db.$transaction(async (tx) => {
+    await tx.cookSlot.deleteMany()
+    for (let i = 0; i < bDays.length; i++)
+      for (const personId of breakfast[i] ?? [])
+        await tx.cookSlot.create({ data: { day: bDays[i], type: 'breakfast', personId } })
+    for (let i = 0; i < dDays.length; i++)
+      for (const personId of dinner[i] ?? [])
+        await tx.cookSlot.create({ data: { day: dDays[i], type: 'dinner', personId } })
+  })
+
+  revalidatePath('/schedule')
+  return { success: 'Schedule reshuffled!' }
+}
+
 export async function resetScheduleAction() {
   await db.$transaction(async (tx) => {
     await tx.cookSlot.deleteMany()

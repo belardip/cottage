@@ -4,7 +4,8 @@
       "Bash(bash deploy.sh \"prevent same pair from cooking more than one meal\")",
       "Bash(bash deploy.sh \"swap checkbox checkmark for X icon in schedule cards\")",
       "Bash(bash deploy.sh \"refresh page after generating or resetting schedule\")",
-      "Bash(bash deploy.sh \"force ScheduleGrid remount on generate/reset so local state syncs\")"
+      "Bash(bash deploy.sh \"force ScheduleGrid remount on generate/reset so local state syncs\")",
+      "Bash(bash deploy.sh \"add reshuffle to schedule, move destructive reset to setup with confirm dialog\")"
     ]
   }
 }
