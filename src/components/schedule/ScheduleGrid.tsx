@@ -52,14 +52,14 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
     startTransition(async () => {
       const result = await generateScheduleAction()
       if (result.error) toast.error(result.error)
-      else toast.success(result.success)
+      else { toast.success(result.success); router.refresh() }
     })
   }
 
   function handleReset() {
     startTransition(async () => {
       const result = await resetScheduleAction()
-      if (result.success) toast.success(result.success)
+      if (result.success) { toast.success(result.success); router.refresh() }
     })
   }
 
