@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -35,7 +35,11 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
   const [isPending, startTransition] = useTransition()
   const [skipped, setSkipped] = useState<string[]>(initialSkipped)
   const [slotMap, setSlotMap] = useState<SlotMap>(initialSlotMap)
+  const initialSlotMapJson = JSON.stringify(initialSlotMap)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setSlotMap(initialSlotMap) }, [initialSlotMapJson])
   const [selected, setSelected] = useState<Selected | null>(null)
+  const [hoveredCook, setHoveredCook] = useState<string | null>(null)
   const router = useRouter()
 
   const isScheduled = Object.keys(mealMap).length > 0
@@ -214,6 +218,7 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
                         <div className="flex flex-wrap gap-1">
                           {cooks.map(name => {
                             const isSelected = selected?.slotKey === key && selected?.name === name
+                            const isHighlighted = hoveredCook === name
                             return scheduleLocked ? (
                               <button
                                 key={name}
@@ -224,13 +229,13 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
                               >
                                 <Badge
                                   variant={isSelected ? 'default' : 'secondary'}
-                                  className={cn('text-[11px] px-1.5 h-5 cursor-pointer transition-all', isSelected && 'ring-2 ring-primary ring-offset-1')}
+                                  className={cn('text-[11px] px-1.5 h-5 cursor-pointer transition-all', isSelected && 'ring-2 ring-primary ring-offset-1', isHighlighted && !isSelected && 'bg-primary text-primary-foreground')}
                                 >
                                   {name}
                                 </Badge>
                               </button>
                             ) : (
-                              <Badge key={name} variant="secondary" className="text-[11px] px-1.5 h-5">
+                              <Badge key={name} variant="secondary" className={cn('text-[11px] px-1.5 h-5 transition-all', isHighlighted && 'bg-primary text-primary-foreground')}>
                                 {name}
                               </Badge>
                             )
@@ -255,14 +260,14 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
       {isScheduled && (
         <>
           <Separator />
-          <CookSummary slotMap={slotMap} mealMap={mealMap} />
+          <CookSummary slotMap={slotMap} mealMap={mealMap} hoveredCook={hoveredCook} onHoverCook={setHoveredCook} />
         </>
       )}
     </div>
   )
 }
 
-function CookSummary({ slotMap, mealMap }: { slotMap: SlotMap; mealMap: MealMap }) {
+function CookSummary({ slotMap, mealMap, hoveredCook, onHoverCook }: { slotMap: SlotMap; mealMap: MealMap; hoveredCook: string | null; onHoverCook: (name: string | null) => void }) {
   const counts: Record<string, number> = {}
   for (const key of Object.keys(mealMap)) {
     const cooks = slotMap[key] ?? []
@@ -278,9 +283,14 @@ function CookSummary({ slotMap, mealMap }: { slotMap: SlotMap; mealMap: MealMap 
         {Object.entries(counts)
           .sort((a, b) => a[0].localeCompare(b[0]))
           .map(([name, count]) => (
-            <div key={name} className="flex items-center gap-1.5 text-sm">
-              <span className="font-medium">{name}</span>
-              <Badge variant="outline">{count}</Badge>
+            <div
+              key={name}
+              className="flex items-center gap-1.5 text-sm cursor-default"
+              onMouseEnter={() => onHoverCook(name)}
+              onMouseLeave={() => onHoverCook(null)}
+            >
+              <span className={cn('font-medium transition-colors', hoveredCook === name && 'text-primary')}>{name}</span>
+              <Badge variant={hoveredCook === name ? 'default' : 'outline'}>{count}</Badge>
             </div>
           ))}
       </div>
