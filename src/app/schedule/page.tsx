@@ -35,6 +35,7 @@ export default async function SchedulePage() {
 
   return (
     <ScheduleGrid
+      key={`${scheduleLocked}-${meals.length}`}
       mealMap={mealMap}
       slotMap={slotMap}
       people={people}
