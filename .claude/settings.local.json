@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash deploy.sh \"prevent same pair from cooking more than one meal\")"
+    ]
+  }
+}

@@ -49,6 +49,24 @@ function buildPool(mealCount: number, existingPool: number[] = []): number[] {
   return pool
 }
 
+function pairKey(a: number, b: number): string {
+  return a < b ? `${a},${b}` : `${b},${a}`
+}
+
+function hasDuplicatePairs(newPairs: number[][], priorPairs: number[][]): boolean {
+  const seen = new Set<string>()
+  for (const pair of priorPairs) {
+    if (pair.length >= 2) seen.add(pairKey(pair[0], pair[1]))
+  }
+  for (const pair of newPairs) {
+    if (pair.length < 2) continue
+    const key = pairKey(pair[0], pair[1])
+    if (seen.has(key)) return true
+    seen.add(key)
+  }
+  return false
+}
+
 function hasCouplePair(pairs: number[][]): boolean {
   for (const pair of pairs) {
     if (pair.length < 2) continue
@@ -83,14 +101,14 @@ function drawPairs(
   const checkSameDay = existingDays.length > 0 && proposedDays.length > 0 && existingPairs.length > 0
   for (let i = 0; i < 1000; i++) {
     const pairs = chunk(shuffle(pool), 2)
-    if (!hasCouplePair(pairs)) {
+    if (!hasCouplePair(pairs) && !hasDuplicatePairs(pairs, existingPairs)) {
       if (!checkSameDay || !hasSameDayDouble(existingDays, existingPairs, proposedDays, pairs))
         return pairs
     }
   }
   for (let i = 0; i < 1000; i++) {
     const pairs = chunk(shuffle(pool), 2)
-    if (!hasCouplePair(pairs)) return pairs
+    if (!hasCouplePair(pairs) && !hasDuplicatePairs(pairs, existingPairs)) return pairs
   }
   throw new Error('Schedule generation failed after 2000 attempts')
 }
