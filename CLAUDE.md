@@ -3,7 +3,7 @@
 # Cottage Trip Planner
 
 **URL**: https://cottage.tenderbones.org
-**Password**: gladstone (simple shared-password auth via middleware + cookie)
+**Password**: set in `.env.local` as `COTTAGE_PASSWORD` (simple shared-password auth via middleware + cookie)
 
 ## Stack
 Next.js 16 (App Router), TypeScript, Prisma 7 + LibSQL/SQLite, shadcn/ui, Tailwind v4, Anthropic SDK
