@@ -118,6 +118,34 @@ model StapleItem {
   @@map("staple_items")
 }
 
+model LunchRecipe {
+  id               Int               @id @default(autoincrement())
+  name             String?
+  recipeUrl        String?
+  originalServings Int?
+  notes            String?
+  peopleIds        String            @default("[]")
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  ingredients LunchIngredient[]
+
+  @@map("lunch_recipes")
+}
+
+model LunchIngredient {
+  id            Int         @id @default(autoincrement())
+  lunchRecipeId Int
+  name          String
+  quantity      Float?
+  unit          String?
+  sortOrder     Int         @default(0)
+
+  lunchRecipe LunchRecipe @relation(fields: [lunchRecipeId], references: [id], onDelete: Cascade)
+
+  @@map("lunch_ingredients")
+}
+
 model IngredientSuggestion {
   id   Int    @id @default(autoincrement())
   name String @unique

@@ -5,7 +5,11 @@ import { db } from '@/lib/db'
 import { generateJson } from '@/lib/ai'
 
 export async function generateShoppingListAction() {
-  const ingredients = await db.mealIngredient.findMany()
+  const [mealIngredients, lunchIngredients] = await Promise.all([
+    db.mealIngredient.findMany(),
+    db.lunchIngredient.findMany(),
+  ])
+  const ingredients = [...mealIngredients, ...lunchIngredients]
   if (!ingredients.length) return { error: 'No meal ingredients found. Add ingredients to meals first.' }
 
   const lines = ingredients.map(i => i.name + (i.quantity ? ` (${i.quantity} ${i.unit ?? ''})` : '')).join('\n')

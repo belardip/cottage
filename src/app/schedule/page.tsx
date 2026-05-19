@@ -1,12 +1,14 @@
 import { db } from '@/lib/db'
 import { ScheduleGrid } from '@/components/schedule/ScheduleGrid'
+import { LunchSection } from '@/components/schedule/LunchSection'
 
 export default async function SchedulePage() {
-  const [setting, meals, cookSlots, people] = await Promise.all([
+  const [setting, meals, cookSlots, people, lunchRecipes] = await Promise.all([
     db.setting.findFirst(),
     db.meal.findMany({ include: { ingredients: true }, orderBy: [{ day: 'asc' }, { type: 'asc' }] }),
     db.cookSlot.findMany({ include: { person: true } }),
     db.person.findMany({ orderBy: { id: 'asc' } }),
+    db.lunchRecipe.findMany({ include: { ingredients: true }, orderBy: { createdAt: 'asc' } }),
   ])
 
   const mealMap: Record<string, typeof meals[0]> = {}
@@ -34,15 +36,18 @@ export default async function SchedulePage() {
   }
 
   return (
-    <ScheduleGrid
-      key={`${scheduleLocked}-${meals.length}`}
-      mealMap={mealMap}
-      slotMap={slotMap}
-      people={people}
-      tripStartDate={tripStartDate?.toISOString() ?? null}
-      scheduleLocked={scheduleLocked}
-      skippedSlots={skippedSlots}
-      dates={dates}
-    />
+    <>
+      <ScheduleGrid
+        key={`${scheduleLocked}-${meals.length}`}
+        mealMap={mealMap}
+        slotMap={slotMap}
+        people={people}
+        tripStartDate={tripStartDate?.toISOString() ?? null}
+        scheduleLocked={scheduleLocked}
+        skippedSlots={skippedSlots}
+        dates={dates}
+      />
+      <LunchSection lunchRecipes={lunchRecipes} people={people} />
+    </>
   )
 }
