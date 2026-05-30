@@ -28,7 +28,7 @@ export default async function SchedulePage() {
   const dates: Record<number, string> = {}
   if (tripStartDate) {
     const start = new Date(tripStartDate)
-    for (let d = 1; d <= 7; d++) {
+    for (let d = 1; d <= 8; d++) {
       const date = new Date(start)
       date.setDate(start.getDate() + d - 1)
       dates[d] = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })

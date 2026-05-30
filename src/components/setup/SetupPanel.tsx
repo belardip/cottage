@@ -128,7 +128,7 @@ export function SetupPanel({ tripStartDate: initialDate, stores: initialStores, 
           </div>
           {selectedDate && (
             <p className="text-sm text-muted-foreground">
-              Trip runs {format(selectedDate, 'EEEE, MMMM d')} → {format(new Date(selectedDate.getTime() + 6 * 86400000), 'EEEE, MMMM d')}
+              Trip runs {format(selectedDate, 'EEEE, MMMM d')} → {format(new Date(selectedDate.getTime() + 7 * 86400000), 'EEEE, MMMM d')}
             </p>
           )}
         </CardContent>

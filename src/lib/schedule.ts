@@ -129,8 +129,8 @@ export interface ScheduleResult {
 }
 
 export function generateSchedule(skippedSlots: string[]): ScheduleResult {
-  const bDays = [1, 2, 3, 4, 5, 6, 7].filter(d => !skippedSlots.includes(`${d}-breakfast`))
-  const dDays = [1, 2, 3, 4, 5, 6, 7].filter(d => !skippedSlots.includes(`${d}-dinner`))
+  const bDays = [1, 2, 3, 4, 5, 6, 7, 8].filter(d => !skippedSlots.includes(`${d}-breakfast`))
+  const dDays = [1, 2, 3, 4, 5, 6, 7, 8].filter(d => !skippedSlots.includes(`${d}-dinner`))
 
   let bPool = buildPool(bDays.length)
   let dPool = buildPool(dDays.length, bPool)

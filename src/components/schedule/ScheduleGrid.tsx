@@ -26,7 +26,7 @@ interface ScheduleGridProps {
   dates: Record<number, string>
 }
 
-const DAYS = [1, 2, 3, 4, 5, 6, 7]
+const DAYS = [1, 2, 3, 4, 5, 6, 7, 8]
 const MEAL_TYPES = ['breakfast', 'dinner'] as const
 
 type Selected = { slotKey: string; name: string }
