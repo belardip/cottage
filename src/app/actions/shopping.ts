@@ -3,8 +3,10 @@
 import { revalidatePath } from 'next/cache'
 import { db } from '@/lib/db'
 import { generateJson } from '@/lib/ai'
+import { requireAuth } from '@/lib/auth'
 
 export async function generateShoppingListAction() {
+  await requireAuth()
   const [mealIngredients, lunchIngredients] = await Promise.all([
     db.mealIngredient.findMany(),
     db.lunchIngredient.findMany(),
@@ -54,6 +56,7 @@ ${lines}`
 }
 
 export async function categorizeShoppingAction() {
+  await requireAuth()
   const items = await db.shoppingItem.findMany()
   if (!items.length) return { error: 'No items to categorize.' }
 
@@ -77,6 +80,7 @@ ${names.join('\n')}`
 }
 
 export async function assignStoresAction() {
+  await requireAuth()
   const stores = await db.store.findMany()
   const bringFromHome = stores.find(s => s.name === 'Bring from Home')
   const items = await db.shoppingItem.findMany({
@@ -112,6 +116,7 @@ Return ONLY a JSON object mapping item id to store id or null:
 }
 
 export async function addShoppingItemAction(name: string, quantity?: number, unit?: string, category?: string) {
+  await requireAuth()
   const max = await db.shoppingItem.aggregate({ _max: { sortOrder: true } })
   await db.shoppingItem.create({
     data: { name, quantity: quantity ?? null, unit: unit ?? null, category: category ?? null, source: 'manual', sortOrder: (max._max.sortOrder ?? 0) + 1 },
@@ -128,11 +133,13 @@ export async function updateShoppingItemAction(id: number, data: {
   isChecked?: boolean
   sortOrder?: number
 }) {
+  await requireAuth()
   await db.shoppingItem.update({ where: { id }, data })
   revalidatePath('/shopping')
 }
 
 export async function moveToStapleAction(itemId: number, personId: number) {
+  await requireAuth()
   const item = await db.shoppingItem.findUnique({ where: { id: itemId } })
   if (!item) return
 
@@ -147,6 +154,7 @@ export async function moveToStapleAction(itemId: number, personId: number) {
 }
 
 export async function deleteShoppingItemAction(id: number) {
+  await requireAuth()
   await db.shoppingItem.delete({ where: { id } })
   revalidatePath('/shopping')
 }

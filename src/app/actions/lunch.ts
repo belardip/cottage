@@ -3,14 +3,17 @@
 import { revalidatePath } from 'next/cache'
 import { db } from '@/lib/db'
 import { generateJson } from '@/lib/ai'
+import { requireAuth } from '@/lib/auth'
 
 export async function createLunchRecipeAction(): Promise<number> {
+  await requireAuth()
   const recipe = await db.lunchRecipe.create({ data: {} })
   revalidatePath('/schedule')
   return recipe.id
 }
 
 export async function deleteLunchRecipeAction(id: number): Promise<void> {
+  await requireAuth()
   await db.lunchRecipe.delete({ where: { id } })
   revalidatePath('/schedule')
 }
@@ -21,17 +24,20 @@ export async function updateLunchRecipeAction(id: number, data: {
   originalServings?: number | null
   notes?: string | null
 }) {
+  await requireAuth()
   await db.lunchRecipe.update({ where: { id }, data })
   revalidatePath(`/lunch/${id}`)
   revalidatePath('/schedule')
 }
 
 export async function updateLunchPeopleAction(id: number, peopleIds: number[]): Promise<void> {
+  await requireAuth()
   await db.lunchRecipe.update({ where: { id }, data: { peopleIds: JSON.stringify(peopleIds) } })
   revalidatePath('/schedule')
 }
 
 export async function addLunchIngredientAction(recipeId: number, name: string, quantity?: number, unit?: string) {
+  await requireAuth()
   const max = await db.lunchIngredient.aggregate({ _max: { sortOrder: true }, where: { lunchRecipeId: recipeId } })
   await db.lunchIngredient.create({
     data: { lunchRecipeId: recipeId, name, quantity: quantity ?? null, unit: unit ?? null, sortOrder: (max._max.sortOrder ?? 0) + 1 },
@@ -44,18 +50,21 @@ export async function updateLunchIngredientAction(id: number, data: {
   quantity?: number | null
   unit?: string | null
 }) {
+  await requireAuth()
   await db.lunchIngredient.update({ where: { id }, data })
   const ing = await db.lunchIngredient.findUnique({ where: { id } })
   if (ing) revalidatePath(`/lunch/${ing.lunchRecipeId}`)
 }
 
 export async function deleteLunchIngredientAction(id: number) {
+  await requireAuth()
   const ing = await db.lunchIngredient.findUnique({ where: { id } })
   await db.lunchIngredient.delete({ where: { id } })
   if (ing) revalidatePath(`/lunch/${ing.lunchRecipeId}`)
 }
 
 export async function parseLunchTextAction(recipeId: number, text: string, originalServings: number) {
+  await requireAuth()
   const prompt = `Extract all ingredients from this recipe text. Scale the quantities from ${originalServings} servings to 7 servings.
 Return ONLY a JSON array with no explanation, no markdown. Format:
 [{"name":"flour","quantity":2.5,"unit":"cups"},{"name":"salt","quantity":null,"unit":null}]
@@ -83,6 +92,7 @@ ${text.substring(0, 8000)}`
 }
 
 export async function importLunchRecipeAction(recipeId: number, recipeUrl: string) {
+  await requireAuth()
   if (!recipeUrl) throw new Error('Recipe URL is required')
 
   const res = await fetch(recipeUrl, {

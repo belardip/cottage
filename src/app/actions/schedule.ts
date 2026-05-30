@@ -3,8 +3,10 @@
 import { revalidatePath } from 'next/cache'
 import { db } from '@/lib/db'
 import { generateSchedule } from '@/lib/schedule'
+import { requireAuth } from '@/lib/auth'
 
 export async function generateScheduleAction() {
+  await requireAuth()
   const setting = await db.setting.findFirst()
   if (!setting) return { error: 'No settings found.' }
   if (setting.scheduleLocked) return { error: 'Schedule is already locked.' }
@@ -41,6 +43,7 @@ export async function generateScheduleAction() {
 }
 
 export async function reshuffleScheduleAction() {
+  await requireAuth()
   const setting = await db.setting.findFirst()
   if (!setting) return { error: 'No settings found.' }
 
@@ -62,6 +65,7 @@ export async function reshuffleScheduleAction() {
 }
 
 export async function resetScheduleAction() {
+  await requireAuth()
   await db.$transaction(async (tx) => {
     await tx.cookSlot.deleteMany()
     await tx.meal.deleteMany()
@@ -75,6 +79,7 @@ export async function tradeCookAction(
   nameA: string, dayA: number, typeA: string,
   nameB: string, dayB: number, typeB: string
 ) {
+  await requireAuth()
   const [personA, personB] = await Promise.all([
     db.person.findFirst({ where: { name: nameA } }),
     db.person.findFirst({ where: { name: nameB } }),
@@ -95,6 +100,7 @@ export async function tradeCookAction(
 }
 
 export async function skipSlotAction(day: number, type: string, skipped: boolean) {
+  await requireAuth()
   const setting = await db.setting.findFirst()
   if (!setting) return
 

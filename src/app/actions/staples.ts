@@ -2,8 +2,10 @@
 
 import { revalidatePath } from 'next/cache'
 import { db } from '@/lib/db'
+import { requireAuth } from '@/lib/auth'
 
 export async function addStapleAction(name: string, assignedPersonId?: number) {
+  await requireAuth()
   const max = await db.stapleItem.aggregate({ _max: { sortOrder: true } })
   await db.stapleItem.create({
     data: {
@@ -17,6 +19,7 @@ export async function addStapleAction(name: string, assignedPersonId?: number) {
 }
 
 export async function addFromCatalogAction(name: string, category: string, assignedPersonId?: number) {
+  await requireAuth()
   const max = await db.stapleItem.aggregate({ _max: { sortOrder: true } })
   await db.stapleItem.create({
     data: {
@@ -34,11 +37,13 @@ export async function updateStapleAction(id: number, data: {
   isChecked?: boolean
   assignedPersonId?: number | null
 }) {
+  await requireAuth()
   await db.stapleItem.update({ where: { id }, data })
   revalidatePath('/staples')
 }
 
 export async function moveStapleToShoppingAction(itemId: number, storeId: number) {
+  await requireAuth()
   const item = await db.stapleItem.findUnique({ where: { id: itemId } })
   if (!item) return
 
@@ -53,6 +58,7 @@ export async function moveStapleToShoppingAction(itemId: number, storeId: number
 }
 
 export async function deleteStapleAction(id: number) {
+  await requireAuth()
   const item = await db.stapleItem.findUnique({ where: { id } })
   if (item && !item.isCustom) return { error: 'Cannot delete default staple items.' }
   await db.stapleItem.delete({ where: { id } })

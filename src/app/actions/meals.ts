@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { db } from '@/lib/db'
 import { generateJson } from '@/lib/ai'
+import { requireAuth } from '@/lib/auth'
 
 export async function updateMealAction(id: number, data: {
   name?: string | null
@@ -10,12 +11,14 @@ export async function updateMealAction(id: number, data: {
   originalServings?: number | null
   notes?: string | null
 }) {
+  await requireAuth()
   await db.meal.update({ where: { id }, data })
   revalidatePath(`/meals/${id}`)
   revalidatePath('/schedule')
 }
 
 export async function addIngredientAction(mealId: number, name: string, quantity?: number, unit?: string) {
+  await requireAuth()
   const max = await db.mealIngredient.aggregate({ _max: { sortOrder: true }, where: { mealId } })
   await db.mealIngredient.create({
     data: { mealId, name, quantity: quantity ?? null, unit: unit ?? null, sortOrder: (max._max.sortOrder ?? 0) + 1 },
@@ -24,11 +27,13 @@ export async function addIngredientAction(mealId: number, name: string, quantity
 }
 
 export async function deleteMealAction(id: number) {
+  await requireAuth()
   await db.meal.delete({ where: { id } })
   revalidatePath('/schedule')
 }
 
 export async function createMealAction(day: number, type: string) {
+  await requireAuth()
   const meal = await db.meal.create({ data: { day, type } })
   revalidatePath('/schedule')
   return meal.id
@@ -39,18 +44,21 @@ export async function updateIngredientAction(id: number, data: {
   quantity?: number | null
   unit?: string | null
 }) {
+  await requireAuth()
   await db.mealIngredient.update({ where: { id }, data })
   const ing = await db.mealIngredient.findUnique({ where: { id } })
   if (ing) revalidatePath(`/meals/${ing.mealId}`)
 }
 
 export async function deleteIngredientAction(id: number) {
+  await requireAuth()
   const ing = await db.mealIngredient.findUnique({ where: { id } })
   await db.mealIngredient.delete({ where: { id } })
   if (ing) revalidatePath(`/meals/${ing.mealId}`)
 }
 
 export async function parseMealTextAction(mealId: number, text: string, originalServings: number) {
+  await requireAuth()
   const prompt = `Extract all ingredients from this recipe text. Scale the quantities from ${originalServings} servings to 7 servings.
 Return ONLY a JSON array with no explanation, no markdown. Format:
 [{"name":"flour","quantity":2.5,"unit":"cups"},{"name":"salt","quantity":null,"unit":null}]
@@ -84,6 +92,7 @@ ${text.substring(0, 8000)}`
 }
 
 export async function importRecipeAction(mealId: number, recipeUrl: string) {
+  await requireAuth()
   if (!recipeUrl) throw new Error('Recipe URL is required')
 
   const res = await fetch(recipeUrl, {
