@@ -24,6 +24,7 @@ interface ScheduleGridProps {
   scheduleLocked: boolean
   skippedSlots: string[]
   dates: Record<number, string>
+  shoppingGenerated?: boolean
 }
 
 const DAYS = [1, 2, 3, 4, 5, 6, 7, 8]
@@ -31,7 +32,7 @@ const MEAL_TYPES = ['breakfast', 'dinner'] as const
 
 type Selected = { slotKey: string; name: string }
 
-export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked, skippedSlots: initialSkipped, dates }: ScheduleGridProps) {
+export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked, skippedSlots: initialSkipped, dates, shoppingGenerated }: ScheduleGridProps) {
   const [isPending, startTransition] = useTransition()
   const [skipped, setSkipped] = useState<string[]>(initialSkipped)
   const [slotMap, setSlotMap] = useState<SlotMap>(initialSlotMap)
@@ -119,6 +120,12 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
           {scheduleLocked && (
             <p className="text-sm text-muted-foreground mt-0.5">Schedule is locked — reset to change.</p>
           )}
+          {shoppingGenerated && (
+            <p className="text-sm text-amber-600 dark:text-amber-400 mt-0.5">
+              Shopping list generated — meal editing locked. To add missing items, go to the{' '}
+              <Link href="/shopping" className="underline underline-offset-2">shopping list</Link>.
+            </p>
+          )}
         </div>
         <div className="flex gap-2">
           {scheduleLocked ? (
@@ -171,10 +178,10 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
                   <div
                     key={type}
                     className={cn(
-                      'relative rounded-xl p-3 flex flex-col transition-all',
+                      'relative rounded-xl p-3 flex flex-col transition-all min-h-32',
                       isEmpty
-                        ? 'border border-dashed min-h-10 opacity-40 hover:opacity-70'
-                        : 'border-2 min-h-32.5',
+                        ? 'border border-dashed opacity-40 hover:opacity-70'
+                        : 'border-2',
                       isSkipped ? 'opacity-35 bg-muted border-2' : 'bg-card',
                       !isEmpty && (isBreakfast
                         ? 'border-accent/40 hover:border-accent/80'
@@ -184,7 +191,7 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
                     )}
                   >
                     {/* Overlay — sits above static content (z-10) but below interactive elements (z-20) */}
-                    {!isSkipped && (meal
+                    {!isSkipped && !shoppingGenerated && (meal
                       ? <Link href={`/meals/${meal.id}`} className="absolute inset-0 rounded-xl z-10" aria-label={meal.name ?? 'Edit meal'} />
                       : <button className="absolute inset-0 rounded-xl z-10 cursor-pointer" onClick={() => handleEmptySlotClick(day, type)} aria-label="Add meal" />
                     )}

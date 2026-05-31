@@ -14,7 +14,7 @@ type Person = { id: number; name: string }
 const navLinks = [
   { href: '/schedule', label: 'Schedule' },
   { href: '/shopping', label: 'Shopping' },
-  { href: '/staples', label: 'Staples' },
+  { href: '/staples', label: 'Bring from Home' },
   { href: '/setup', label: 'Setup' },
 ]
 

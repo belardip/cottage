@@ -4,7 +4,7 @@ import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
-  generateShoppingListAction, categorizeShoppingAction, assignStoresAction,
+  generateShoppingListAction,
   addShoppingItemAction, updateShoppingItemAction, moveToStapleAction, deleteShoppingItemAction,
 } from '@/app/actions/shopping'
 import { Button } from '@/components/ui/button'
@@ -14,9 +14,10 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
-import { ShoppingCart, Tag, Store, Trash2, Plus } from 'lucide-react'
+import { ShoppingCart, Trash2, Plus, X } from 'lucide-react'
 
 type Item = { id: number; name: string; quantity: number | null; unit: string | null; category: string | null; source: string; storeId: number | null; isChecked: boolean; sortOrder: number; store: { id: number; name: string } | null }
 type StoreType = { id: number; name: string; sortOrder: number; assignedPerson: { name: string } | null }
@@ -26,6 +27,7 @@ interface ShoppingListProps {
   items: Item[]
   stores: StoreType[]
   people: Person[]
+  ingredientCount: number
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -41,16 +43,17 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Cleaning': 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200',
 }
 
-export function ShoppingList({ items: initialItems, stores, people }: ShoppingListProps) {
+export function ShoppingList({ items: initialItems, stores, people, ingredientCount }: ShoppingListProps) {
   const [items, setItems] = useState(initialItems)
   const [isPending, startTransition] = useTransition()
+  const [notes, setNotes] = useState<string[]>([])
 
   useEffect(() => { setItems(initialItems) }, [initialItems])
   const router = useRouter()
   const [newItem, setNewItem] = useState({ name: '', quantity: '', unit: '', category: '' })
   const [addOpen, setAddOpen] = useState(false)
-  const [stapleOpen, setStapleOpen] = useState<number | null>(null)
-  const [selectedPerson, setSelectedPerson] = useState('')
+
+  const hasGenerated = items.some(i => i.source === 'generated')
 
   const unassigned = items.filter(i => !i.storeId)
   const byStore = stores.map(store => ({ store, items: items.filter(i => i.storeId === store.id) }))
@@ -82,25 +85,15 @@ export function ShoppingList({ items: initialItems, stores, people }: ShoppingLi
 
   function handleGenerate() {
     startTransition(async () => {
+      setNotes([])
       const result = await generateShoppingListAction()
-      if ('error' in result) toast.error(result.error)
-      else { toast.success(result.success); router.refresh() }
-    })
-  }
-
-  function handleCategorize() {
-    startTransition(async () => {
-      const result = await categorizeShoppingAction()
-      if ('error' in result) toast.error(result.error)
-      else { toast.success(result.success); router.refresh() }
-    })
-  }
-
-  function handleAssignStores() {
-    startTransition(async () => {
-      const result = await assignStoresAction()
-      if ('error' in result) toast.error(result.error)
-      else { toast.success(result.success); router.refresh() }
+      if ('error' in result) {
+        toast.error(result.error)
+      } else {
+        toast.success(result.success)
+        if (result.notes && result.notes.length > 0) setNotes(result.notes)
+        router.refresh()
+      }
     })
   }
 
@@ -115,14 +108,12 @@ export function ShoppingList({ items: initialItems, stores, people }: ShoppingLi
     })
   }
 
-  function handleMoveToStaple(itemId: number) {
-    if (!selectedPerson) { toast.error('Select a person'); return }
+  function handleBFHAssign(itemId: number, personId: number) {
+    const person = people.find(p => p.id === personId)
     startTransition(async () => {
-      await moveToStapleAction(itemId, Number(selectedPerson))
+      await moveToStapleAction(itemId, personId)
       setItems(prev => prev.filter(i => i.id !== itemId))
-      setStapleOpen(null)
-      setSelectedPerson('')
-      toast.success('Moved to staples.')
+      toast.success(`Added to ${person?.name ?? 'person'}'s Bring from Home list.`)
     })
   }
 
@@ -137,18 +128,28 @@ export function ShoppingList({ items: initialItems, stores, people }: ShoppingLi
           <p className="text-sm text-muted-foreground">{checked}/{total} items checked</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button onClick={handleGenerate} disabled={isPending} size="sm">
-            <ShoppingCart className="h-4 w-4 sm:mr-1.5" />
-            <span className="hidden sm:inline">{isPending ? 'Working…' : 'Generate from Meals'}</span>
-          </Button>
-          <Button onClick={handleCategorize} disabled={isPending} variant="outline" size="sm">
-            <Tag className="h-4 w-4 sm:mr-1.5" />
-            <span className="hidden sm:inline">Categorize</span>
-          </Button>
-          <Button onClick={handleAssignStores} disabled={isPending} variant="outline" size="sm">
-            <Store className="h-4 w-4 sm:mr-1.5" />
-            <span className="hidden sm:inline">Assign Stores</span>
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button disabled={isPending} size="sm">
+                <ShoppingCart className="h-4 w-4 sm:mr-1.5" />
+                <span className="hidden sm:inline">{isPending ? 'Working…' : hasGenerated ? 'Regenerate' : 'Generate from Meals'}</span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{hasGenerated ? 'Regenerate Shopping List?' : 'Generate Shopping List?'}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {hasGenerated
+                    ? 'This will replace the current generated list with a fresh one from your current meal and lunch ingredients. Manually added items will be kept. Meal and lunch editing will remain locked.'
+                    : 'Make sure all meal and lunch ingredients are entered first — once you generate, meal and lunch editing will be locked. You can still add items to the list manually afterwards.'}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleGenerate}>{hasGenerated ? 'Regenerate' : 'Generate'}</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm">
@@ -172,27 +173,54 @@ export function ShoppingList({ items: initialItems, stores, people }: ShoppingLi
         </div>
       </div>
 
+      {notes.length > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-4 py-3 text-sm">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="font-medium text-amber-900 dark:text-amber-200 mb-1.5">Notes from generation</p>
+              <ul className="space-y-1 text-amber-800 dark:text-amber-300">
+                {notes.map((note, i) => <li key={i}>• {note}</li>)}
+              </ul>
+            </div>
+            <button onClick={() => setNotes([])} className="shrink-0 text-amber-600 hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-200 mt-0.5">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {items.length === 0 && (
         <div className="rounded-lg border border-dashed border-border p-8 text-center text-muted-foreground">
           <ShoppingCart className="h-10 w-10 mx-auto mb-3 opacity-40" />
-          <p className="font-medium">No items yet</p>
-          <p className="text-sm mt-1">Generate from meals or add items manually.</p>
+          {ingredientCount > 0 ? (
+            <>
+              <p className="font-medium">{ingredientCount} ingredient{ingredientCount !== 1 ? 's' : ''} ready</p>
+              <p className="text-sm mt-1">Make sure all meals and lunches are entered, then generate.</p>
+            </>
+          ) : (
+            <>
+              <p className="font-medium">No ingredients yet</p>
+              <p className="text-sm mt-1">Add ingredients to meals and lunch on the schedule page first.</p>
+            </>
+          )}
         </div>
       )}
 
       {unassigned.length > 0 && (
         <ItemGroup title="Unassigned" items={unassigned} stores={stores} people={people}
-          toggleCheck={toggleCheck} changeStore={changeStore} handleDelete={handleDelete}
-          stapleOpen={stapleOpen} setStapleOpen={setStapleOpen} selectedPerson={selectedPerson}
-          setSelectedPerson={setSelectedPerson} handleMoveToStaple={handleMoveToStaple} isPending={isPending} />
+          toggleCheck={toggleCheck} changeStore={changeStore} handleDelete={handleDelete} isPending={isPending} />
       )}
 
-      {byStore.filter(({ items }) => items.length > 0).map(({ store, items: storeItems }) => (
-        <ItemGroup key={store.id} title={store.name} subtitle={store.assignedPerson?.name} items={storeItems} stores={stores} people={people}
-          toggleCheck={toggleCheck} changeStore={changeStore} handleDelete={handleDelete}
-          stapleOpen={stapleOpen} setStapleOpen={setStapleOpen} selectedPerson={selectedPerson}
-          setSelectedPerson={setSelectedPerson} handleMoveToStaple={handleMoveToStaple} isPending={isPending} />
-      ))}
+      {byStore.filter(({ items }) => items.length > 0).map(({ store, items: storeItems }) => {
+        const isBFH = store.name === 'Bring from Home'
+        return (
+          <ItemGroup key={store.id} title={store.name} subtitle={isBFH ? undefined : store.assignedPerson?.name}
+            items={storeItems} stores={stores} people={people}
+            toggleCheck={toggleCheck} changeStore={changeStore} handleDelete={handleDelete}
+            onBFHAssign={isBFH ? handleBFHAssign : undefined}
+            isPending={isPending} />
+        )
+      })}
     </div>
   )
 }
@@ -206,15 +234,11 @@ interface ItemGroupProps {
   toggleCheck: (id: number) => void
   changeStore: (id: number, storeId: string) => void
   handleDelete: (id: number) => void
-  stapleOpen: number | null
-  setStapleOpen: (id: number | null) => void
-  selectedPerson: string
-  setSelectedPerson: (v: string) => void
-  handleMoveToStaple: (id: number) => void
+  onBFHAssign?: (itemId: number, personId: number) => void
   isPending: boolean
 }
 
-function ItemGroup({ title, subtitle, items, stores, people, toggleCheck, changeStore, handleDelete, stapleOpen, setStapleOpen, selectedPerson, setSelectedPerson, handleMoveToStaple, isPending }: ItemGroupProps) {
+function ItemGroup({ title, subtitle, items, stores, people, toggleCheck, changeStore, handleDelete, onBFHAssign, isPending }: ItemGroupProps) {
   const checkedCount = items.filter(i => i.isChecked).length
 
   return (
@@ -231,11 +255,7 @@ function ItemGroup({ title, subtitle, items, stores, people, toggleCheck, change
       <CardContent className="space-y-1 pt-0">
         {items.map(item => (
           <div key={item.id} className="flex items-center gap-2 py-2 border-b border-border/40 last:border-0">
-            <Checkbox
-              checked={item.isChecked}
-              onCheckedChange={() => toggleCheck(item.id)}
-              className="shrink-0"
-            />
+            <Checkbox checked={item.isChecked} onCheckedChange={() => toggleCheck(item.id)} className="shrink-0" />
             <div className="flex-1 min-w-0">
               <span className={cn('text-sm', item.isChecked && 'line-through text-muted-foreground')}>{item.name}</span>
               {(item.quantity || item.unit) && (
@@ -247,39 +267,27 @@ function ItemGroup({ title, subtitle, items, stores, people, toggleCheck, change
                 {item.category}
               </Badge>
             )}
-            <Select value={item.storeId?.toString() ?? 'none'} onValueChange={v => changeStore(item.id, v)}>
-              <SelectTrigger className="h-7 w-28 sm:w-36 text-xs shrink-0">
-                <SelectValue placeholder="Store…" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none"><span className="text-muted-foreground">No store</span></SelectItem>
-                {stores.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
 
-            <Dialog open={stapleOpen === item.id} onOpenChange={open => { setStapleOpen(open ? item.id : null); if (!open) setSelectedPerson('') }}>
-              <DialogTrigger asChild>
-                <Button size="sm" variant="ghost" className="h-7 px-2 shrink-0 text-xs text-muted-foreground">
-                  → Staples
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader><DialogTitle>Move "{item.name}" to Staples</DialogTitle></DialogHeader>
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <Label>Assign to</Label>
-                    <Select value={selectedPerson} onValueChange={setSelectedPerson}>
-                      <SelectTrigger><SelectValue placeholder="Select person…" /></SelectTrigger>
-                      <SelectContent>
-                        {people.map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button onClick={() => handleMoveToStaple(item.id)} disabled={!selectedPerson || isPending}>Move to Staples</Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-
+            {onBFHAssign ? (
+              <div className="flex gap-1 flex-wrap shrink-0">
+                {people.map(p => (
+                  <button key={p.id} onClick={() => onBFHAssign(item.id, p.id)} disabled={isPending}
+                    className="text-xs px-2 py-0.5 rounded-full border border-border hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors">
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <Select value={item.storeId?.toString() ?? 'none'} onValueChange={v => changeStore(item.id, v)}>
+                <SelectTrigger className="h-7 w-28 sm:w-36 text-xs shrink-0">
+                  <SelectValue placeholder="Store…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none"><span className="text-muted-foreground">No store</span></SelectItem>
+                  {stores.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
             <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive shrink-0" onClick={() => handleDelete(item.id)}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>

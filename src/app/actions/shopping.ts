@@ -7,112 +7,83 @@ import { requireAuth } from '@/lib/auth'
 
 export async function generateShoppingListAction() {
   await requireAuth()
-  const [mealIngredients, lunchIngredients] = await Promise.all([
+  const [mealIngredients, lunchIngredients, stores] = await Promise.all([
     db.mealIngredient.findMany(),
     db.lunchIngredient.findMany(),
+    db.store.findMany(),
   ])
   const ingredients = [...mealIngredients, ...lunchIngredients]
-  if (!ingredients.length) return { error: 'No meal ingredients found. Add ingredients to meals first.' }
+  if (!ingredients.length) return { error: 'No ingredients found. Add ingredients to meals first.' }
 
-  const lines = ingredients.map(i => i.name + (i.quantity ? ` (${i.quantity} ${i.unit ?? ''})` : '')).join('\n')
+  const lines = ingredients.map(i => i.name + (i.quantity ? ` (${i.quantity}${i.unit ? ' ' + i.unit : ''})` : '')).join('\n')
+  const shoppingStores = stores.filter(s => s.name !== 'Bring from Home')
+  const storeNames = shoppingStores.map(s => s.name)
+  const categories = ['Produce', 'Meat & Seafood', 'Dairy & Eggs', 'Bakery', 'Dry Goods', 'Frozen', 'Canned', 'Condiments', 'Beverages', 'Cleaning', 'Other']
 
-  const prompt = `You are consolidating a grocery list from multiple recipes into a practical shopping list. Many ingredients appear multiple times under different names (e.g. "garlic cloves, roughly chopped" and "minced garlic" are both garlic). Combine duplicates and round quantities up to sensible amounts.
+  const prompt = `Consolidate this grocery list from multiple recipes into a practical shopping list. Combine duplicates and sum quantities.
 
-Return ONLY a JSON array with no explanation:
-[{"name":"chicken broth","quantity":1050,"unit":"mL","bring_from_home":false},{"name":"olive oil","quantity":0.5,"unit":"cups","bring_from_home":true}]
+Return a JSON object with two keys — "items" (array) and "notes" (array of strings explaining any judgment calls).
 
-Rules:
-- Use clean generic names (not recipe descriptions)
-- Sum quantities when units match, then round UP to a practical amount (e.g. 4.38 cups → 4.5 cups, 950 mL → 1000 mL). Keep the original unit type — do NOT use container/package words like "carton", "bottle", "bag", "box"
-- Convert to sensible units where helpful: cups of liquid → mL or L, garlic cloves → heads (1 head ≈ 10 cloves), butter tbsp → grams
-- Set bring_from_home: true for pantry staples people typically already own at home: oils, vinegars, spices, salt, pepper, sugar, flour, butter, soy sauce, hot sauce, baking soda, etc.
-- Use null for quantity or unit if not applicable
+QUANTITY RULES (strict):
+- NEVER round down. If rounding, always round UP.
+- For items naturally counted as whole units (onions, eggs, lemons, limes, avocados, apples, bananas, peppers, potatoes, carrots, etc.) always round UP to the nearest whole integer. Never output a decimal for these. 1.167 onions → 2 onions.
+- For measured quantities (mL, cups, grams, tbsp, etc.) only round up when the result lands on a clean number and the difference is under 10% (950 mL → 1000 mL is ok).
+- Do the arithmetic exactly — 1 dozen eggs + 2 eggs = 14 eggs.
+- When combining items with incompatible units, pick the most useful unit, err on the side of more, and add a note.
+- Include EVERY ingredient. Do not drop any item.
+- Only add a note when there's a genuine judgment call worth flagging (e.g. incompatible units, significant assumptions). Do not add notes for routine rounding of whole-count items.
+- If an ingredient has no quantity, include it with null quantity.
+
+OTHER RULES:
+- Clean generic names only (e.g. "garlic cloves, roughly chopped" → "garlic")
+- Do NOT use package words like "carton", "bottle", "bag", "box" as units
+- Set bring_from_home: true for pantry staples (oils, vinegars, spices, salt, pepper, sugar, flour, butter, soy sauce, hot sauce, baking soda, etc.)
+- Assign a category from: ${categories.join(', ')}
+- Assign a store from this list (by name): ${storeNames.length ? storeNames.join(', ') : '(none — use null)'}. Use your knowledge of each store type (Costco = bulk, No Frills = grocery, etc.). Use null if unsure. Items with bring_from_home: true should have store: null.
+
+Return format (example):
+{"items":[{"name":"eggs","quantity":14,"unit":null,"bring_from_home":false,"category":"Dairy & Eggs","store":"No Frills"},{"name":"olive oil","quantity":null,"unit":null,"bring_from_home":true,"category":"Condiments","store":null}],"notes":["Combined 1 dozen eggs + 2 eggs = 14 eggs (kept exact)"]}
 
 Ingredients from recipes:
 ${lines}`
 
-  type ConsolidatedItem = { name: string; quantity?: number; unit?: string; bring_from_home?: boolean }
-  const consolidated = await generateJson(prompt) as ConsolidatedItem[]
-  const bringFromHome = await db.store.findFirst({ where: { name: 'Bring from Home' } })
+  type ConsolidatedItem = { name: string; quantity?: number | null; unit?: string | null; bring_from_home?: boolean; category?: string | null; store?: string | null }
+  type GenerateResult = { items: ConsolidatedItem[]; notes?: string[] }
+
+  const result = await generateJson(prompt) as GenerateResult
+  if (!result || !Array.isArray(result.items)) {
+    return { error: 'AI failed to generate shopping list. Please try again.' }
+  }
+
+  const bringFromHome = stores.find(s => s.name === 'Bring from Home')
+  const storeByName = Object.fromEntries(stores.map(s => [s.name.toLowerCase(), s.id]))
 
   await db.shoppingItem.deleteMany({ where: { source: 'generated' } })
-  for (let i = 0; i < consolidated.length; i++) {
-    const item = consolidated[i]
+  for (let i = 0; i < result.items.length; i++) {
+    const item = result.items[i]
     if (!item.name) continue
+    let storeId: number | null = null
+    if (item.bring_from_home && bringFromHome) {
+      storeId = bringFromHome.id
+    } else if (item.store) {
+      storeId = storeByName[item.store.toLowerCase()] ?? null
+    }
     await db.shoppingItem.create({
       data: {
         name: item.name,
         quantity: item.quantity ?? null,
         unit: item.unit ?? null,
+        category: item.category ?? null,
         source: 'generated',
         sortOrder: i,
-        storeId: item.bring_from_home && bringFromHome ? bringFromHome.id : null,
+        storeId,
       },
     })
   }
 
   revalidatePath('/shopping')
-  return { success: 'Shopping list generated and consolidated by AI.' }
-}
-
-export async function categorizeShoppingAction() {
-  await requireAuth()
-  const items = await db.shoppingItem.findMany()
-  if (!items.length) return { error: 'No items to categorize.' }
-
-  const names = items.map(i => i.name)
-  const prompt = `Categorize each grocery item into one of these categories: Produce, Meat & Seafood, Dairy & Eggs, Bakery, Dry Goods, Frozen, Canned, Condiments, Beverages, Cleaning, Other.
-
-Return ONLY a JSON object mapping item name to category: {"chicken breast": "Meat & Seafood", "milk": "Dairy & Eggs"}
-
-Items:
-${names.join('\n')}`
-
-  const map = await generateJson(prompt) as Record<string, string>
-  for (const item of items) {
-    if (map[item.name]) {
-      await db.shoppingItem.update({ where: { id: item.id }, data: { category: map[item.name] } })
-    }
-  }
-
-  revalidatePath('/shopping')
-  return { success: 'Items categorized.' }
-}
-
-export async function assignStoresAction() {
-  await requireAuth()
-  const stores = await db.store.findMany()
-  const bringFromHome = stores.find(s => s.name === 'Bring from Home')
-  const items = await db.shoppingItem.findMany({
-    where: bringFromHome
-      ? { OR: [{ storeId: null }, { storeId: { not: bringFromHome.id } }] }
-      : undefined,
-  })
-
-  if (!items.length || !stores.length) return { error: 'Need items and stores first.' }
-
-  const storeLines = stores.map(s => `${s.id}: ${s.name}`).join('\n')
-  const itemLines = items.map(i => `${i.id}: ${i.name}${i.quantity ? ` (${i.quantity} ${i.unit ?? ''})` : ''}`).join('\n')
-
-  const prompt = `Assign each grocery item to the most appropriate store. Use your knowledge of store types from their names (e.g. "Costco" = bulk warehouse, a bakery name = bread/pastries, a grocery store = general items).
-Prefer warehouse/bulk stores for large quantities. Use null if no store is a clear fit.
-
-Stores:
-${storeLines}
-
-Items (id: name, quantity):
-${itemLines}
-
-Return ONLY a JSON object mapping item id to store id or null:
-{"1": 2, "3": null}`
-
-  const map = await generateJson(prompt) as Record<string, number | null>
-  for (const [itemId, storeId] of Object.entries(map)) {
-    await db.shoppingItem.update({ where: { id: Number(itemId) }, data: { storeId: storeId ?? null } })
-  }
-
-  revalidatePath('/shopping')
-  return { success: 'Items assigned to stores.' }
+  const notes: string[] = Array.isArray(result.notes) ? result.notes : []
+  return { success: `Shopping list generated — ${result.items.length} items.`, notes }
 }
 
 export async function addShoppingItemAction(name: string, quantity?: number, unit?: string, category?: string) {

@@ -99,7 +99,7 @@ export function PersonList({ byStore, staples, personName }: PersonListProps) {
       {staples.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Staples to Bring</CardTitle>
+            <CardTitle className="text-base">Bring from Home</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { createLunchRecipeAction, deleteLunchRecipeAction, updateLunchRecipeAction, updateLunchPeopleAction } from '@/app/actions/lunch'
+import { cn } from '@/lib/utils'
 
 type Person = { id: number; name: string }
 type LunchIngredient = { id: number }
@@ -17,7 +18,7 @@ function parsePeopleIds(json: string): number[] {
   try { return JSON.parse(json) as number[] } catch { return [] }
 }
 
-export function LunchSection({ lunchRecipes: initial, people }: { lunchRecipes: LunchRecipe[]; people: Person[] }) {
+export function LunchSection({ lunchRecipes: initial, people, shoppingGenerated }: { lunchRecipes: LunchRecipe[]; people: Person[]; shoppingGenerated?: boolean }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [recipes, setRecipes] = useState(initial)
@@ -68,11 +69,17 @@ export function LunchSection({ lunchRecipes: initial, people }: { lunchRecipes: 
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-lg font-semibold">Lunch Ideas</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">Ingredients count toward the shopping list but these don't affect the cook schedule.</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {shoppingGenerated
+              ? 'Shopping list generated — editing locked.'
+              : "Ingredients count toward the shopping list but these don't affect the cook schedule."}
+          </p>
         </div>
-        <Button size="sm" variant="outline" onClick={handleAdd} disabled={isPending}>
-          <Plus className="h-4 w-4 mr-1.5" />Add recipe
-        </Button>
+        {!shoppingGenerated && (
+          <Button size="sm" variant="outline" onClick={handleAdd} disabled={isPending}>
+            <Plus className="h-4 w-4 mr-1.5" />Add recipe
+          </Button>
+        )}
       </div>
 
       {recipes.length === 0 ? (
@@ -84,7 +91,7 @@ export function LunchSection({ lunchRecipes: initial, people }: { lunchRecipes: 
             return (
               <Card key={recipe.id}>
                 <CardContent className="pt-4 space-y-3">
-                  {editingName === recipe.id ? (
+                  {!shoppingGenerated && editingName === recipe.id ? (
                     <Input
                       value={nameValue}
                       onChange={e => setNameValue(e.target.value)}
@@ -96,10 +103,10 @@ export function LunchSection({ lunchRecipes: initial, people }: { lunchRecipes: 
                     />
                   ) : (
                     <div
-                      className="font-medium text-sm cursor-pointer hover:text-primary min-h-[1.5rem]"
-                      onClick={() => startEditName(recipe)}
+                      className={cn('font-medium text-sm min-h-6', !shoppingGenerated && 'cursor-pointer hover:text-primary')}
+                      onClick={() => !shoppingGenerated && startEditName(recipe)}
                     >
-                      {recipe.name ?? <span className="text-muted-foreground italic font-normal">Untitled — click to name</span>}
+                      {recipe.name ?? <span className="text-muted-foreground italic font-normal">{shoppingGenerated ? 'Untitled' : 'Untitled — click to name'}</span>}
                     </div>
                   )}
 
@@ -130,7 +137,7 @@ export function LunchSection({ lunchRecipes: initial, people }: { lunchRecipes: 
                           <ExternalLink className="h-3.5 w-3.5" />
                         </a>
                       )}
-                      {confirmDelete === recipe.id ? (
+                      {!shoppingGenerated && (confirmDelete === recipe.id ? (
                         <span className="flex items-center gap-2">
                           <button onClick={() => handleDelete(recipe.id)} disabled={isPending} className="text-destructive hover:underline">Delete</button>
                           <button onClick={() => setConfirmDelete(null)} className="hover:underline">Cancel</button>
@@ -139,10 +146,12 @@ export function LunchSection({ lunchRecipes: initial, people }: { lunchRecipes: 
                         <button onClick={() => setConfirmDelete(recipe.id)} className="hover:text-destructive">
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
+                      ))}
+                      {!shoppingGenerated && (
+                        <Link href={`/lunch/${recipe.id}`} className="hover:text-foreground flex items-center gap-0.5">
+                          Edit <ChevronRight className="h-3.5 w-3.5" />
+                        </Link>
                       )}
-                      <Link href={`/lunch/${recipe.id}`} className="hover:text-foreground flex items-center gap-0.5">
-                        Edit <ChevronRight className="h-3.5 w-3.5" />
-                      </Link>
                     </div>
                   </div>
                 </CardContent>

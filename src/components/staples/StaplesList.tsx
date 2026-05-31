@@ -73,7 +73,7 @@ export function StaplesList({ staples: initialStaples, people, stores, suggestio
       setNewName('')
       setNewPersonId('')
       setAddOpen(false)
-      toast.success('Staple added.')
+      toast.success('Item added.')
     })
   }
 
@@ -121,7 +121,7 @@ export function StaplesList({ staples: initialStaples, people, stores, suggestio
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold">Staples</h1>
+          <h1 className="text-2xl font-bold">Bring from Home</h1>
           <p className="text-sm text-muted-foreground">{checkedCount}/{staples.length} checked off</p>
         </div>
         <div className="flex gap-2">
@@ -133,7 +133,7 @@ export function StaplesList({ staples: initialStaples, people, stores, suggestio
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
-              <DialogHeader><DialogTitle>Staple Catalog</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>Bring from Home Catalog</DialogTitle></DialogHeader>
               <div className="space-y-3 flex-1 overflow-hidden flex flex-col">
                 <div className="grid grid-cols-2 gap-3">
                   <Input placeholder="Search…" value={catalogSearch} onChange={e => setCatalogSearch(e.target.value)} />
@@ -174,7 +174,7 @@ export function StaplesList({ staples: initialStaples, people, stores, suggestio
               </Button>
             </DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>Add Custom Staple</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>Add Custom Item</DialogTitle></DialogHeader>
               <form onSubmit={handleAdd} className="space-y-3">
                 <div className="space-y-1.5"><Label>Name</Label><Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Item name" autoFocus /></div>
                 <div className="space-y-1.5">
@@ -197,7 +197,7 @@ export function StaplesList({ staples: initialStaples, people, stores, suggestio
       {staples.length === 0 && (
         <div className="rounded-lg border border-dashed border-border p-8 text-center text-muted-foreground">
           <BookOpen className="h-10 w-10 mx-auto mb-3 opacity-40" />
-          <p className="font-medium">No staples yet</p>
+          <p className="font-medium">No items yet</p>
           <p className="text-sm mt-1">Add from the catalog or add custom items.</p>
         </div>
       )}
