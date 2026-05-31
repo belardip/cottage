@@ -143,12 +143,16 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
         </div>
       )}
 
+      {(() => {
+        const activeDays = DAYS.filter(day => dates[day])
+        const numDays = activeDays.length
+        return (
       <div className="overflow-x-auto -mx-4 px-4">
-      <div className="grid grid-cols-7 gap-2 min-w-150">
-        {DAYS.map(day => {
+      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${numDays}, minmax(0, 1fr))`, minWidth: `${numDays * 8}rem` }}>
+        {activeDays.map(day => {
           const [weekday, date] = (dates[day] ?? `Day ${day}`).split(', ')
           return (
-            <div key={day} className="col-span-1 flex flex-col gap-2">
+            <div key={day} className="flex flex-col gap-2">
               <div className="text-center py-1">
                 <div className="text-xs font-bold uppercase tracking-wider text-foreground">{weekday}</div>
                 <div className="text-[11px] text-muted-foreground">{date}</div>
@@ -161,15 +165,21 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
                 const isSkipped = skipped.includes(key)
                 const isBreakfast = type === 'breakfast'
 
+                const isEmpty = !meal && !isSkipped
+
                 return (
                   <div
                     key={type}
                     className={cn(
-                      'relative rounded-xl border-2 p-3 flex flex-col min-h-32.5 transition-all',
-                      isSkipped ? 'opacity-35 bg-muted' : 'bg-card',
-                      isBreakfast
+                      'relative rounded-xl p-3 flex flex-col transition-all',
+                      isEmpty
+                        ? 'border border-dashed min-h-10 opacity-40 hover:opacity-70'
+                        : 'border-2 min-h-32.5',
+                      isSkipped ? 'opacity-35 bg-muted border-2' : 'bg-card',
+                      !isEmpty && (isBreakfast
                         ? 'border-accent/40 hover:border-accent/80'
-                        : 'border-primary/30 hover:border-primary/70',
+                        : 'border-primary/30 hover:border-primary/70'),
+                      isEmpty && (isBreakfast ? 'border-accent/40' : 'border-primary/25'),
                       !isSkipped && 'cursor-pointer'
                     )}
                   >
@@ -179,75 +189,77 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
                       : <button className="absolute inset-0 rounded-xl z-10 cursor-pointer" onClick={() => handleEmptySlotClick(day, type)} aria-label="Add meal" />
                     )}
 
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-2">
-                      <span className={cn(
-                        'text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-md',
-                        isBreakfast
-                          ? 'bg-accent/20 text-amber-800 dark:text-amber-300'
-                          : 'bg-primary/12 text-primary'
-                      )}>
-                        {isBreakfast ? 'BF' : 'Din'}
-                      </span>
-                      {!scheduleLocked && (
-                        <div className="relative z-20">
-                          <Checkbox
-                            className="h-3.5 w-3.5"
-                            checked={isSkipped}
-                            onCheckedChange={checked => handleSkip(day, type, !!checked)}
-                            title="Skip this slot"
-                          />
+                    {isEmpty ? (
+                      <span className="text-[10px] text-muted-foreground self-center">{isBreakfast ? 'BF' : 'DIN'}</span>
+                    ) : (
+                      <>
+                        {/* Header */}
+                        <div className="flex items-center justify-between mb-2">
+                          <span className={cn(
+                            'text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-md',
+                            isBreakfast
+                              ? 'bg-accent/20 text-amber-800 dark:text-amber-300'
+                              : 'bg-primary/12 text-primary'
+                          )}>
+                            {isBreakfast ? 'BF' : 'DIN'}
+                          </span>
+                          {!scheduleLocked && (
+                            <div className="relative z-20">
+                              <Checkbox
+                                className="h-3.5 w-3.5"
+                                checked={isSkipped}
+                                onCheckedChange={checked => handleSkip(day, type, !!checked)}
+                                title="Skip this slot"
+                              />
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
 
-                    {/* Meal name — grows to fill space */}
-                    <div className="flex-1">
-                      {meal ? (
-                        <span className="text-xs font-semibold line-clamp-2 leading-snug">
-                          {meal.name || <span className="text-muted-foreground font-normal italic">Add meal…</span>}
-                        </span>
-                      ) : (
-                        <span className="text-[11px] text-muted-foreground">—</span>
-                      )}
-                    </div>
-
-                    {/* Cooks — always at bottom */}
-                    <div className="mt-2 space-y-1">
-                      {cooks.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {cooks.map(name => {
-                            const isSelected = selected?.slotKey === key && selected?.name === name
-                            const isHighlighted = hoveredCook === name
-                            return scheduleLocked ? (
-                              <button
-                                key={name}
-                                className="relative z-20"
-                                onClick={() => handleBadgeClick(key, name)}
-                                disabled={isPending}
-                                title={selected ? `Trade ${selected.name} with ${name}` : `Select ${name} to trade`}
-                              >
-                                <Badge
-                                  variant={isSelected ? 'default' : 'secondary'}
-                                  className={cn('text-[11px] px-1.5 h-5 cursor-pointer transition-all', isSelected && 'ring-2 ring-primary ring-offset-1', isHighlighted && !isSelected && 'bg-primary text-primary-foreground')}
-                                >
-                                  {name}
-                                </Badge>
-                              </button>
-                            ) : (
-                              <Badge key={name} variant="secondary" className={cn('text-[11px] px-1.5 h-5 transition-all', isHighlighted && 'bg-primary text-primary-foreground')}>
-                                {name}
-                              </Badge>
-                            )
-                          })}
+                        {/* Meal name — grows to fill space */}
+                        <div className="flex-1">
+                          <span className="text-xs font-semibold line-clamp-2 leading-snug">
+                            {meal?.name || <span className="text-muted-foreground font-normal italic">Add meal…</span>}
+                          </span>
                         </div>
-                      )}
-                      {meal?.ingredients && meal.ingredients.length > 0 && (
-                        <p className="text-[10px] text-muted-foreground">
-                          {meal.ingredients.length} ingredient{meal.ingredients.length !== 1 ? 's' : ''}
-                        </p>
-                      )}
-                    </div>
+
+                        {/* Cooks + ingredient count — always at bottom */}
+                        <div className="mt-2 space-y-1">
+                          {cooks.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {cooks.map(name => {
+                                const isSelected = selected?.slotKey === key && selected?.name === name
+                                const isHighlighted = hoveredCook === name
+                                return scheduleLocked ? (
+                                  <button
+                                    key={name}
+                                    className="relative z-20"
+                                    onClick={() => handleBadgeClick(key, name)}
+                                    disabled={isPending}
+                                    title={selected ? `Trade ${selected.name} with ${name}` : `Select ${name} to trade`}
+                                  >
+                                    <Badge
+                                      variant={isSelected ? 'default' : 'secondary'}
+                                      className={cn('text-[11px] px-1.5 h-5 cursor-pointer transition-all', isSelected && 'ring-2 ring-primary ring-offset-1', isHighlighted && !isSelected && 'bg-primary text-primary-foreground')}
+                                    >
+                                      {name}
+                                    </Badge>
+                                  </button>
+                                ) : (
+                                  <Badge key={name} variant="secondary" className={cn('text-[11px] px-1.5 h-5 transition-all', isHighlighted && 'bg-primary text-primary-foreground')}>
+                                    {name}
+                                  </Badge>
+                                )
+                              })}
+                            </div>
+                          )}
+                          {meal?.ingredients && meal.ingredients.length > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              {meal.ingredients.length} ingredient{meal.ingredients.length !== 1 ? 's' : ''}
+                            </p>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
                 )
               })}
@@ -256,6 +268,8 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
         })}
       </div>
       </div>
+        )
+      })()}
 
       {isScheduled && (
         <>
