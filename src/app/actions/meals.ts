@@ -24,6 +24,7 @@ export async function addIngredientAction(mealId: number, name: string, quantity
     data: { mealId, name, quantity: quantity ?? null, unit: unit ?? null, sortOrder: (max._max.sortOrder ?? 0) + 1 },
   })
   revalidatePath(`/meals/${mealId}`)
+  revalidatePath('/schedule')
 }
 
 export async function deleteMealAction(id: number) {
@@ -47,14 +48,20 @@ export async function updateIngredientAction(id: number, data: {
   await requireAuth()
   await db.mealIngredient.update({ where: { id }, data })
   const ing = await db.mealIngredient.findUnique({ where: { id } })
-  if (ing) revalidatePath(`/meals/${ing.mealId}`)
+  if (ing) {
+    revalidatePath(`/meals/${ing.mealId}`)
+    revalidatePath('/schedule')
+  }
 }
 
 export async function deleteIngredientAction(id: number) {
   await requireAuth()
   const ing = await db.mealIngredient.findUnique({ where: { id } })
   await db.mealIngredient.delete({ where: { id } })
-  if (ing) revalidatePath(`/meals/${ing.mealId}`)
+  if (ing) {
+    revalidatePath(`/meals/${ing.mealId}`)
+    revalidatePath('/schedule')
+  }
 }
 
 export async function parseMealTextAction(mealId: number, text: string, originalServings: number) {
@@ -88,6 +95,7 @@ ${text.substring(0, 8000)}`
   }
 
   revalidatePath(`/meals/${mealId}`)
+  revalidatePath('/schedule')
   return validIngredients
 }
 
@@ -156,5 +164,6 @@ ${text}`
   }
 
   revalidatePath(`/meals/${mealId}`)
+  revalidatePath('/schedule')
   return { ingredients: validIngredients, servings: detectedServings }
 }
