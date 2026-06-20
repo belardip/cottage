@@ -4,7 +4,7 @@ import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
-  generateShoppingListAction,
+  generateShoppingListAction, exportIngredientsAction,
   addShoppingItemAction, updateShoppingItemAction, moveToStapleAction, deleteShoppingItemAction,
 } from '@/app/actions/shopping'
 import { Button } from '@/components/ui/button'
@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
-import { ShoppingCart, Trash2, Plus, X } from 'lucide-react'
+import { ShoppingCart, Trash2, Plus, X, Download } from 'lucide-react'
 
 type Item = { id: number; name: string; quantity: number | null; unit: string | null; category: string | null; source: string; storeId: number | null; isChecked: boolean; sortOrder: number; store: { id: number; name: string } | null }
 type StoreType = { id: number; name: string; sortOrder: number; assignedPerson: { name: string } | null }
@@ -81,6 +81,22 @@ export function ShoppingList({ items: initialItems, stores, people, ingredientCo
     startTransition(async () => {
       await deleteShoppingItemAction(id)
     })
+  }
+
+  async function handleExport() {
+    const items = await exportIngredientsAction()
+    const rows = [
+      ['Name', 'Quantity', 'Unit', 'Used In'],
+      ...items.map(i => [i.name, i.quantity ?? '', i.unit ?? '', i.meals.join(' | ')]),
+    ]
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'cottage-ingredients.csv'
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   function handleGenerate() {
@@ -150,6 +166,10 @@ export function ShoppingList({ items: initialItems, stores, people, ingredientCo
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+          <Button variant="outline" size="sm" onClick={handleExport}>
+            <Download className="h-4 w-4 sm:mr-1.5" />
+            <span className="hidden sm:inline">Export CSV</span>
+          </Button>
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm">

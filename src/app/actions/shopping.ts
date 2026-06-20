@@ -119,6 +119,40 @@ ${lines}`
   return { success: `Shopping list generated — ${result.items.length} items.`, notes }
 }
 
+export async function exportIngredientsAction() {
+  await requireAuth()
+  const [mealIngredients, lunchIngredients] = await Promise.all([
+    db.mealIngredient.findMany({ include: { meal: { select: { name: true, day: true, type: true } } } }),
+    db.lunchIngredient.findMany({ include: { lunchRecipe: { select: { name: true } } } }),
+  ])
+
+  const map = new Map<string, { name: string; quantity: number | null; unit: string | null; meals: string[] }>()
+  for (const i of mealIngredients) {
+    const key = `${i.name.trim().toLowerCase()}|${(i.unit ?? '').trim().toLowerCase()}`
+    const mealLabel = i.meal.name ? `Day ${i.meal.day} ${i.meal.type} (${i.meal.name})` : `Day ${i.meal.day} ${i.meal.type}`
+    const existing = map.get(key)
+    if (existing) {
+      if (i.quantity != null) existing.quantity = (existing.quantity ?? 0) + i.quantity
+      existing.meals.push(mealLabel)
+    } else {
+      map.set(key, { name: i.name.trim(), quantity: i.quantity ?? null, unit: i.unit ?? null, meals: [mealLabel] })
+    }
+  }
+  for (const i of lunchIngredients) {
+    const key = `${i.name.trim().toLowerCase()}|${(i.unit ?? '').trim().toLowerCase()}`
+    const label = i.lunchRecipe.name ? `Lunch (${i.lunchRecipe.name})` : 'Lunch'
+    const existing = map.get(key)
+    if (existing) {
+      if (i.quantity != null) existing.quantity = (existing.quantity ?? 0) + i.quantity
+      existing.meals.push(label)
+    } else {
+      map.set(key, { name: i.name.trim(), quantity: i.quantity ?? null, unit: i.unit ?? null, meals: [label] })
+    }
+  }
+
+  return Array.from(map.values())
+}
+
 export async function addShoppingItemAction(name: string, quantity?: number, unit?: string, category?: string) {
   await requireAuth()
   const max = await db.shoppingItem.aggregate({ _max: { sortOrder: true } })
