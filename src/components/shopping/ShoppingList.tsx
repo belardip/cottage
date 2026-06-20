@@ -49,6 +49,8 @@ export function ShoppingList({ items: initialItems, stores, people, ingredientCo
   const [notes, setNotes] = useState<string[]>([])
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editName, setEditName] = useState('')
+  const [editQty, setEditQty] = useState('')
+  const [editUnit, setEditUnit] = useState('')
 
   useEffect(() => { setItems(initialItems) }, [initialItems])
   const router = useRouter()
@@ -88,15 +90,19 @@ export function ShoppingList({ items: initialItems, stores, people, ingredientCo
   function startEdit(item: Item) {
     setEditingId(item.id)
     setEditName(item.name)
+    setEditQty(item.quantity != null ? String(item.quantity) : '')
+    setEditUnit(item.unit ?? '')
   }
 
   function saveEdit(id: number) {
     const name = editName.trim()
     setEditingId(null)
     if (!name) return
-    setItems(prev => prev.map(i => i.id === id ? { ...i, name } : i))
+    const quantity = editQty !== '' ? parseFloat(editQty) : null
+    const unit = editUnit.trim() || null
+    setItems(prev => prev.map(i => i.id === id ? { ...i, name, quantity, unit } : i))
     startTransition(async () => {
-      await updateShoppingItemAction(id, { name })
+      await updateShoppingItemAction(id, { name, quantity, unit })
     })
   }
 
@@ -250,8 +256,9 @@ export function ShoppingList({ items: initialItems, stores, people, ingredientCo
       {unassigned.length > 0 && (
         <ItemGroup title="Unassigned" items={unassigned} stores={stores} people={people}
           toggleCheck={toggleCheck} changeStore={changeStore} handleDelete={handleDelete}
-          editingId={editingId} editName={editName}
-          onStartEdit={startEdit} onEditNameChange={setEditName} onSaveEdit={saveEdit} onCancelEdit={cancelEdit}
+          editingId={editingId} editName={editName} editQty={editQty} editUnit={editUnit}
+          onStartEdit={startEdit} onEditNameChange={setEditName} onEditQtyChange={setEditQty} onEditUnitChange={setEditUnit}
+          onSaveEdit={saveEdit} onCancelEdit={cancelEdit}
           isPending={isPending} />
       )}
 
@@ -262,8 +269,9 @@ export function ShoppingList({ items: initialItems, stores, people, ingredientCo
             items={storeItems} stores={stores} people={people}
             toggleCheck={toggleCheck} changeStore={changeStore} handleDelete={handleDelete}
             onBFHAssign={isBFH ? handleBFHAssign : undefined}
-            editingId={editingId} editName={editName}
-            onStartEdit={startEdit} onEditNameChange={setEditName} onSaveEdit={saveEdit} onCancelEdit={cancelEdit}
+            editingId={editingId} editName={editName} editQty={editQty} editUnit={editUnit}
+            onStartEdit={startEdit} onEditNameChange={setEditName} onEditQtyChange={setEditQty} onEditUnitChange={setEditUnit}
+            onSaveEdit={saveEdit} onCancelEdit={cancelEdit}
             isPending={isPending} />
         )
       })}
@@ -283,14 +291,18 @@ interface ItemGroupProps {
   onBFHAssign?: (itemId: number, personId: number) => void
   editingId: number | null
   editName: string
+  editQty: string
+  editUnit: string
   onStartEdit: (item: Item) => void
   onEditNameChange: (name: string) => void
+  onEditQtyChange: (qty: string) => void
+  onEditUnitChange: (unit: string) => void
   onSaveEdit: (id: number) => void
   onCancelEdit: () => void
   isPending: boolean
 }
 
-function ItemGroup({ title, subtitle, items, stores, people, toggleCheck, changeStore, handleDelete, onBFHAssign, editingId, editName, onStartEdit, onEditNameChange, onSaveEdit, onCancelEdit, isPending }: ItemGroupProps) {
+function ItemGroup({ title, subtitle, items, stores, people, toggleCheck, changeStore, handleDelete, onBFHAssign, editingId, editName, editQty, editUnit, onStartEdit, onEditNameChange, onEditQtyChange, onEditUnitChange, onSaveEdit, onCancelEdit, isPending }: ItemGroupProps) {
   const checkedCount = items.filter(i => i.isChecked).length
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -315,18 +327,42 @@ function ItemGroup({ title, subtitle, items, stores, people, toggleCheck, change
             />
             <div className="flex-1 min-w-0">
               {editingId === item.id ? (
-                <input
-                  ref={inputRef}
-                  autoFocus
-                  value={editName}
-                  onChange={e => onEditNameChange(e.target.value)}
-                  onBlur={() => onSaveEdit(item.id)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') { e.preventDefault(); onSaveEdit(item.id) }
-                    if (e.key === 'Escape') onCancelEdit()
-                  }}
-                  className="text-sm w-full border-b border-input bg-transparent outline-none py-0.5"
-                />
+                <div className="flex items-center gap-1.5">
+                  <input
+                    ref={inputRef}
+                    autoFocus
+                    value={editName}
+                    onChange={e => onEditNameChange(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') { e.preventDefault(); onSaveEdit(item.id) }
+                      if (e.key === 'Escape') onCancelEdit()
+                    }}
+                    placeholder="Name"
+                    className="text-sm flex-1 min-w-0 border-b border-input bg-transparent outline-none py-0.5"
+                  />
+                  <input
+                    type="number"
+                    value={editQty}
+                    onChange={e => onEditQtyChange(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') { e.preventDefault(); onSaveEdit(item.id) }
+                      if (e.key === 'Escape') onCancelEdit()
+                    }}
+                    placeholder="Qty"
+                    className="text-sm w-14 border-b border-input bg-transparent outline-none py-0.5"
+                  />
+                  <input
+                    value={editUnit}
+                    onChange={e => onEditUnitChange(e.target.value)}
+                    onBlur={() => onSaveEdit(item.id)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') { e.preventDefault(); onSaveEdit(item.id) }
+                      if (e.key === 'Escape') onCancelEdit()
+                    }}
+                    placeholder="Unit"
+                    className="text-sm w-16 border-b border-input bg-transparent outline-none py-0.5"
+                  />
+                </div>
               ) : (
                 <span className={cn('text-sm', item.isChecked && 'line-through text-muted-foreground')}>{item.name}</span>
               )}

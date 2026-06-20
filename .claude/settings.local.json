@@ -22,7 +22,8 @@
       "Bash(ssh root@142.93.153.52 *)",
       "Bash(scp c:/laragon/www/cottage/gen_shopping.js root@142.93.153.52:/tmp/gen_shopping.js)",
       "Bash(Remove-Item \"c:\\\\laragon\\\\www\\\\cottage\\\\gen_shopping.js\")",
-      "Bash(bash deploy.sh \"shopping list: edit button, store selector for BFH items, fix checkbox boolean coercion\")"
+      "Bash(bash deploy.sh \"shopping list: edit button, store selector for BFH items, fix checkbox boolean coercion\")",
+      "Bash(bash deploy.sh \"edit quantity and unit inline alongside name\")"
     ]
   }
 }
