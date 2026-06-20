@@ -1,6 +1,8 @@
 import { db } from '@/lib/db'
 import { ShoppingList } from '@/components/shopping/ShoppingList'
 
+export const dynamic = 'force-dynamic'
+
 export default async function ShoppingPage() {
   const [items, stores, people, mealIngredientCount, lunchIngredientCount] = await Promise.all([
     db.shoppingItem.findMany({ include: { store: true }, orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] }),

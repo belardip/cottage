@@ -10,10 +10,12 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Separator } from '@/components/ui/separator'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { CalendarDays, RefreshCw, Shuffle } from 'lucide-react'
 
-type MealMap = Record<string, { id: number; day: number; type: string; name: string | null; ingredients: unknown[] }>
+type Ingredient = { id: number; name: string; quantity: number | null; unit: string | null }
+type MealMap = Record<string, { id: number; day: number; type: string; name: string | null; ingredients: Ingredient[] }>
 type SlotMap = Record<string, string[]>
 
 interface ScheduleGridProps {
@@ -260,9 +262,23 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
                             </div>
                           )}
                           {meal?.ingredients && meal.ingredients.length > 0 && (
-                            <p className="text-xs text-muted-foreground">
-                              {meal.ingredients.length} ingredient{meal.ingredients.length !== 1 ? 's' : ''}
-                            </p>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <p className="relative z-20 text-xs text-muted-foreground cursor-default w-fit">
+                                  {meal.ingredients.length} ingredient{meal.ingredients.length !== 1 ? 's' : ''}
+                                </p>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" align="start" className="max-w-55">
+                                <p className="font-semibold mb-1.5">{meal.name}</p>
+                                <ul className="space-y-0.5">
+                                  {meal.ingredients.map(ing => (
+                                    <li key={ing.id} className="text-xs text-muted-foreground">
+                                      {ing.name}{ing.quantity != null ? ` — ${ing.quantity}${ing.unit ? ' ' + ing.unit : ''}` : ''}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </TooltipContent>
+                            </Tooltip>
                           )}
                         </div>
                       </>

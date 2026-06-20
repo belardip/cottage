@@ -20,6 +20,7 @@ export async function addStoreAction(name: string, assignedPersonId?: number) {
     data: { name, assignedPersonId: assignedPersonId ?? null, sortOrder: (max._max.sortOrder ?? 0) + 1 },
   })
   revalidatePath('/setup')
+  revalidatePath('/shopping')
 }
 
 export async function updateStoreAction(id: number, data: {
