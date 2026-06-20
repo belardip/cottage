@@ -176,114 +176,117 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
 
                 const isEmpty = !meal && !isSkipped
 
+                const hasIngredients = !!(meal?.ingredients && meal.ingredients.length > 0)
+
                 return (
-                  <div
-                    key={type}
-                    className={cn(
-                      'relative rounded-xl p-3 flex flex-col transition-all min-h-32',
-                      isEmpty
-                        ? 'border border-dashed opacity-40 hover:opacity-70'
-                        : 'border-2',
-                      isSkipped ? 'opacity-35 bg-muted border-2' : 'bg-card',
-                      !isEmpty && (isBreakfast
-                        ? 'border-accent/40 hover:border-accent/80'
-                        : 'border-primary/30 hover:border-primary/70'),
-                      isEmpty && (isBreakfast ? 'border-accent/40' : 'border-primary/25'),
-                      !isSkipped && 'cursor-pointer'
-                    )}
-                  >
-                    {/* Overlay — sits above static content (z-10) but below interactive elements (z-20) */}
-                    {!isSkipped && !shoppingGenerated && (meal
-                      ? <Link href={`/meals/${meal.id}`} className="absolute inset-0 rounded-xl z-10" aria-label={meal.name ?? 'Edit meal'} />
-                      : <button className="absolute inset-0 rounded-xl z-10 cursor-pointer" onClick={() => handleEmptySlotClick(day, type)} aria-label="Add meal" />
-                    )}
+                  <Tooltip key={type}>
+                    <TooltipTrigger asChild>
+                      <div
+                        className={cn(
+                          'relative rounded-xl p-3 flex flex-col transition-all min-h-32',
+                          isEmpty
+                            ? 'border border-dashed opacity-40 hover:opacity-70'
+                            : 'border-2',
+                          isSkipped ? 'opacity-35 bg-muted border-2' : 'bg-card',
+                          !isEmpty && (isBreakfast
+                            ? 'border-accent/40 hover:border-accent/80'
+                            : 'border-primary/30 hover:border-primary/70'),
+                          isEmpty && (isBreakfast ? 'border-accent/40' : 'border-primary/25'),
+                          !isSkipped && 'cursor-pointer'
+                        )}
+                      >
+                        {/* Overlay — sits above static content (z-10) but below interactive elements (z-20) */}
+                        {!isSkipped && !shoppingGenerated && (meal
+                          ? <Link href={`/meals/${meal.id}`} className="absolute inset-0 rounded-xl z-10" aria-label={meal.name ?? 'Edit meal'} />
+                          : <button className="absolute inset-0 rounded-xl z-10 cursor-pointer" onClick={() => handleEmptySlotClick(day, type)} aria-label="Add meal" />
+                        )}
 
-                    {isEmpty ? (
-                      <span className="text-[10px] text-muted-foreground self-center">{isBreakfast ? 'BF' : 'DIN'}</span>
-                    ) : (
-                      <>
-                        {/* Header */}
-                        <div className="flex items-center justify-between mb-2">
-                          <span className={cn(
-                            'text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-md',
-                            isBreakfast
-                              ? 'bg-accent/20 text-amber-800 dark:text-amber-300'
-                              : 'bg-primary/12 text-primary'
-                          )}>
-                            {isBreakfast ? 'BF' : 'DIN'}
-                          </span>
-                          {!scheduleLocked && (
-                            <div className="relative z-20">
-                              <Checkbox
-                                className="h-3.5 w-3.5"
-                                checked={isSkipped}
-                                onCheckedChange={checked => handleSkip(day, type, !!checked)}
-                                title="Skip this slot"
-                              />
+                        {isEmpty ? (
+                          <span className="text-[10px] text-muted-foreground self-center">{isBreakfast ? 'BF' : 'DIN'}</span>
+                        ) : (
+                          <>
+                            {/* Header */}
+                            <div className="flex items-center justify-between mb-2">
+                              <span className={cn(
+                                'text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-md',
+                                isBreakfast
+                                  ? 'bg-accent/20 text-amber-800 dark:text-amber-300'
+                                  : 'bg-primary/12 text-primary'
+                              )}>
+                                {isBreakfast ? 'BF' : 'DIN'}
+                              </span>
+                              {!scheduleLocked && (
+                                <div className="relative z-20">
+                                  <Checkbox
+                                    className="h-3.5 w-3.5"
+                                    checked={isSkipped}
+                                    onCheckedChange={checked => handleSkip(day, type, !!checked)}
+                                    title="Skip this slot"
+                                  />
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
 
-                        {/* Meal name — grows to fill space */}
-                        <div className="flex-1">
-                          <span className="text-xs font-semibold line-clamp-2 leading-snug">
-                            {meal?.name || <span className="text-muted-foreground font-normal italic">Add meal…</span>}
-                          </span>
-                        </div>
-
-                        {/* Cooks + ingredient count — always at bottom */}
-                        <div className="mt-2 space-y-1">
-                          {cooks.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
-                              {cooks.map(name => {
-                                const isSelected = selected?.slotKey === key && selected?.name === name
-                                const isHighlighted = hoveredCook === name
-                                return scheduleLocked ? (
-                                  <button
-                                    key={name}
-                                    className="relative z-20"
-                                    onClick={() => handleBadgeClick(key, name)}
-                                    disabled={isPending}
-                                    title={selected ? `Trade ${selected.name} with ${name}` : `Select ${name} to trade`}
-                                  >
-                                    <Badge
-                                      variant={isSelected ? 'default' : 'secondary'}
-                                      className={cn('text-[11px] px-1.5 h-5 cursor-pointer transition-all', isSelected && 'ring-2 ring-primary ring-offset-1', isHighlighted && !isSelected && 'bg-primary text-primary-foreground')}
-                                    >
-                                      {name}
-                                    </Badge>
-                                  </button>
-                                ) : (
-                                  <Badge key={name} variant="secondary" className={cn('text-[11px] px-1.5 h-5 transition-all', isHighlighted && 'bg-primary text-primary-foreground')}>
-                                    {name}
-                                  </Badge>
-                                )
-                              })}
+                            {/* Meal name — grows to fill space */}
+                            <div className="flex-1">
+                              <span className="text-xs font-semibold line-clamp-2 leading-snug">
+                                {meal?.name || <span className="text-muted-foreground font-normal italic">Add meal…</span>}
+                              </span>
                             </div>
-                          )}
-                          {meal?.ingredients && meal.ingredients.length > 0 && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <p className="relative z-20 text-xs text-muted-foreground cursor-default w-fit">
-                                  {meal.ingredients.length} ingredient{meal.ingredients.length !== 1 ? 's' : ''}
+
+                            {/* Cooks + ingredient count — always at bottom */}
+                            <div className="mt-2 space-y-1">
+                              {cooks.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                  {cooks.map(name => {
+                                    const isSelected = selected?.slotKey === key && selected?.name === name
+                                    const isHighlighted = hoveredCook === name
+                                    return scheduleLocked ? (
+                                      <button
+                                        key={name}
+                                        className="relative z-20"
+                                        onClick={() => handleBadgeClick(key, name)}
+                                        disabled={isPending}
+                                        title={selected ? `Trade ${selected.name} with ${name}` : `Select ${name} to trade`}
+                                      >
+                                        <Badge
+                                          variant={isSelected ? 'default' : 'secondary'}
+                                          className={cn('text-[11px] px-1.5 h-5 cursor-pointer transition-all', isSelected && 'ring-2 ring-primary ring-offset-1', isHighlighted && !isSelected && 'bg-primary text-primary-foreground')}
+                                        >
+                                          {name}
+                                        </Badge>
+                                      </button>
+                                    ) : (
+                                      <Badge key={name} variant="secondary" className={cn('text-[11px] px-1.5 h-5 transition-all', isHighlighted && 'bg-primary text-primary-foreground')}>
+                                        {name}
+                                      </Badge>
+                                    )
+                                  })}
+                                </div>
+                              )}
+                              {hasIngredients && (
+                                <p className="text-xs text-muted-foreground">
+                                  {meal!.ingredients.length} ingredient{meal!.ingredients.length !== 1 ? 's' : ''}
                                 </p>
-                              </TooltipTrigger>
-                              <TooltipContent side="bottom" align="start" className="max-w-55">
-                                <p className="font-semibold mb-1.5">{meal.name}</p>
-                                <ul className="space-y-0.5">
-                                  {meal.ingredients.map(ing => (
-                                    <li key={ing.id} className="text-xs text-muted-foreground">
-                                      {ing.name}{ing.quantity != null ? ` — ${ing.quantity}${ing.unit ? ' ' + ing.unit : ''}` : ''}
-                                    </li>
-                                  ))}
-                                </ul>
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
-                        </div>
-                      </>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </TooltipTrigger>
+                    {hasIngredients && (
+                      <TooltipContent side="bottom" align="start" className="max-w-55">
+                        <p className="font-semibold mb-1.5">{meal!.name}</p>
+                        <ul className="space-y-0.5">
+                          {meal!.ingredients.map(ing => (
+                            <li key={ing.id} className="text-xs text-muted-foreground">
+                              {ing.name}{ing.quantity != null ? ` — ${ing.quantity}${ing.unit ? ' ' + ing.unit : ''}` : ''}
+                            </li>
+                          ))}
+                        </ul>
+                      </TooltipContent>
                     )}
-                  </div>
+                  </Tooltip>
                 )
               })}
             </div>

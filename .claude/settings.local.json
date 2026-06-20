@@ -24,7 +24,8 @@
       "Bash(Remove-Item \"c:\\\\laragon\\\\www\\\\cottage\\\\gen_shopping.js\")",
       "Bash(bash deploy.sh \"shopping list: edit button, store selector for BFH items, fix checkbox boolean coercion\")",
       "Bash(bash deploy.sh \"edit quantity and unit inline alongside name\")",
-      "Bash(bash deploy.sh \"add ingredient hover tooltip on schedule, fix shopping page static cache\")"
+      "Bash(bash deploy.sh \"add ingredient hover tooltip on schedule, fix shopping page static cache\")",
+      "Bash(bash deploy.sh \"expand ingredient tooltip to full meal card on schedule\")"
     ]
   }
 }
