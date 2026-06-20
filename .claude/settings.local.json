@@ -7,7 +7,8 @@
       "Bash(bash deploy.sh \"force ScheduleGrid remount on generate/reset so local state syncs\")",
       "Bash(bash deploy.sh \"add reshuffle to schedule, move destructive reset to setup with confirm dialog\")",
       "Bash(npm run *)",
-      "Bash(bash deploy.sh \"fix reshuffle not refreshing UI by syncing slotMap state from props\")"
+      "Bash(bash deploy.sh \"fix reshuffle not refreshing UI by syncing slotMap state from props\")",
+      "Bash(bash deploy.sh \"fix: catch AI errors in shopping list generation, increase max_tokens to 8192\")"
     ]
   }
 }

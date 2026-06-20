@@ -50,7 +50,13 @@ ${lines}`
   type ConsolidatedItem = { name: string; quantity?: number | null; unit?: string | null; bring_from_home?: boolean; category?: string | null; store?: string | null }
   type GenerateResult = { items: ConsolidatedItem[]; notes?: string[] }
 
-  const result = await generateJson(prompt) as GenerateResult
+  let result: GenerateResult
+  try {
+    result = await generateJson(prompt) as GenerateResult
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Unknown error'
+    return { error: `AI failed to generate shopping list: ${msg}` }
+  }
   if (!result || !Array.isArray(result.items)) {
     return { error: 'AI failed to generate shopping list. Please try again.' }
   }
