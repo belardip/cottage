@@ -23,7 +23,20 @@ export async function generateShoppingListAction() {
   const ingredients = [...mealIngredients, ...lunchIngredients]
   if (!ingredients.length) return { error: 'No ingredients found. Add ingredients to meals first.' }
 
-  const lines = ingredients.map(i => i.name + (i.quantity ? ` (${i.quantity}${i.unit ? ' ' + i.unit : ''})` : '')).join('\n')
+  // Pre-group by normalized name+unit before sending to AI to reduce prompt/output size
+  const preGrouped = new Map<string, { name: string; quantity: number | null; unit: string | null }>()
+  for (const i of ingredients) {
+    const key = `${i.name.trim().toLowerCase()}|${(i.unit ?? '').trim().toLowerCase()}`
+    const existing = preGrouped.get(key)
+    if (existing) {
+      if (i.quantity != null) existing.quantity = (existing.quantity ?? 0) + i.quantity
+    } else {
+      preGrouped.set(key, { name: i.name.trim(), quantity: i.quantity ?? null, unit: i.unit ?? null })
+    }
+  }
+  const deduped = Array.from(preGrouped.values())
+
+  const lines = deduped.map(i => i.name + (i.quantity ? ` (${i.quantity}${i.unit ? ' ' + i.unit : ''})` : '')).join('\n')
   const shoppingStores = stores.filter(s => s.name !== 'Bring from Home')
   const storeNames = shoppingStores.map(s => s.name)
   const categories = ['Produce', 'Meat & Seafood', 'Dairy & Eggs', 'Bakery', 'Dry Goods', 'Frozen', 'Canned', 'Condiments', 'Beverages', 'Cleaning', 'Other']

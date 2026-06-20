@@ -8,7 +8,11 @@
       "Bash(bash deploy.sh \"add reshuffle to schedule, move destructive reset to setup with confirm dialog\")",
       "Bash(npm run *)",
       "Bash(bash deploy.sh \"fix reshuffle not refreshing UI by syncing slotMap state from props\")",
-      "Bash(bash deploy.sh \"fix: catch AI errors in shopping list generation, increase max_tokens to 8192\")"
+      "Bash(bash deploy.sh \"fix: catch AI errors in shopping list generation, increase max_tokens to 8192\")",
+      "Bash(ssh root@142.93.153.52 \"cat /etc/nginx/sites-enabled/cottage-tenderbones\")",
+      "Bash(ssh root@142.93.153.52 'sed -i '\\\\''s|proxy_cache_bypass $http_upgrade;|proxy_cache_bypass $http_upgrade;\\\\n        proxy_read_timeout 300;\\\\n        proxy_connect_timeout 300;\\\\n        proxy_send_timeout 300;|'\\\\'' /etc/nginx/sites-enabled/cottage-tenderbones && nginx -t && systemctl reload nginx')",
+      "Bash(ssh root@142.93.153.52 \"pm2 logs cottage --lines 50 --nostream\")",
+      "Bash(bash deploy.sh \"fix: pre-deduplicate ingredients by name+unit before sending to AI to stay under token limit\")"
     ]
   }
 }
