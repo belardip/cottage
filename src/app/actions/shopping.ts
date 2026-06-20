@@ -7,11 +7,19 @@ import { requireAuth } from '@/lib/auth'
 
 export async function generateShoppingListAction() {
   await requireAuth()
-  const [mealIngredients, lunchIngredients, stores] = await Promise.all([
-    db.mealIngredient.findMany(),
-    db.lunchIngredient.findMany(),
-    db.store.findMany(),
-  ])
+
+  let mealIngredients, lunchIngredients, stores
+  try {
+    ;[mealIngredients, lunchIngredients, stores] = await Promise.all([
+      db.mealIngredient.findMany(),
+      db.lunchIngredient.findMany(),
+      db.store.findMany(),
+    ])
+  } catch (err) {
+    console.error('Shopping list DB read error:', err)
+    return { error: 'Database error reading ingredients. Please try again.' }
+  }
+
   const ingredients = [...mealIngredients, ...lunchIngredients]
   if (!ingredients.length) return { error: 'No ingredients found. Add ingredients to meals first.' }
 
@@ -54,6 +62,7 @@ ${lines}`
   try {
     result = await generateJson(prompt) as GenerateResult
   } catch (err) {
+    console.error('Shopping list AI error:', err)
     const msg = err instanceof Error ? err.message : 'Unknown error'
     return { error: `AI failed to generate shopping list: ${msg}` }
   }
@@ -64,27 +73,32 @@ ${lines}`
   const bringFromHome = stores.find(s => s.name === 'Bring from Home')
   const storeByName = Object.fromEntries(stores.map(s => [s.name.toLowerCase(), s.id]))
 
-  await db.shoppingItem.deleteMany({ where: { source: 'generated' } })
-  for (let i = 0; i < result.items.length; i++) {
-    const item = result.items[i]
-    if (!item.name) continue
-    let storeId: number | null = null
-    if (item.bring_from_home && bringFromHome) {
-      storeId = bringFromHome.id
-    } else if (item.store) {
-      storeId = storeByName[item.store.toLowerCase()] ?? null
-    }
-    await db.shoppingItem.create({
-      data: {
+  const rows = result.items
+    .filter(item => !!item.name)
+    .map((item, i) => {
+      let storeId: number | null = null
+      if (item.bring_from_home && bringFromHome) {
+        storeId = bringFromHome.id
+      } else if (item.store) {
+        storeId = storeByName[item.store.toLowerCase()] ?? null
+      }
+      return {
         name: item.name,
-        quantity: item.quantity ?? null,
+        quantity: typeof item.quantity === 'number' && isFinite(item.quantity) ? item.quantity : null,
         unit: item.unit ?? null,
         category: item.category ?? null,
-        source: 'generated',
+        source: 'generated' as const,
         sortOrder: i,
         storeId,
-      },
+      }
     })
+
+  try {
+    await db.shoppingItem.deleteMany({ where: { source: 'generated' } })
+    await db.shoppingItem.createMany({ data: rows })
+  } catch (err) {
+    console.error('Shopping list DB write error:', err)
+    return { error: 'Failed to save shopping list to database. Please try again.' }
   }
 
   revalidatePath('/shopping')
