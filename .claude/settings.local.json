@@ -16,7 +16,13 @@
       "Bash(bash deploy.sh \"switch AI model to Sonnet 4.6 for higher output token limit\")",
       "Bash(ssh root@142.93.153.52 \"pm2 logs cottage --lines 30 --nostream\")",
       "Bash(ssh root@142.93.153.52 \"cd /var/www/cottage && rm -rf .next && npm run build && pm2 restart cottage\")",
-      "Bash(bash deploy.sh \"add CSV export button for ingredients list\")"
+      "Bash(bash deploy.sh \"add CSV export button for ingredients list\")",
+      "Bash(ssh root@142.93.153.52 \"sqlite3 /var/www/cottage/prod.db 'SELECT mi.name, mi.quantity, mi.unit, m.name as meal_name, m.day, m.type FROM meal_ingredients mi JOIN meals m ON mi.meal_id = m.id ORDER BY m.day, m.type, mi.sort_order;'\")",
+      "Bash(ssh root@142.93.153.52 'cd /var/www/cottage && node -e \" *)",
+      "Bash(ssh root@142.93.153.52 *)",
+      "Bash(scp c:/laragon/www/cottage/gen_shopping.js root@142.93.153.52:/tmp/gen_shopping.js)",
+      "Bash(Remove-Item \"c:\\\\laragon\\\\www\\\\cottage\\\\gen_shopping.js\")",
+      "Bash(bash deploy.sh \"shopping list: edit button, store selector for BFH items, fix checkbox boolean coercion\")"
     ]
   }
 }

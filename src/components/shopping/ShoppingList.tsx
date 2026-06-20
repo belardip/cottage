@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect } from 'react'
+import { useState, useTransition, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
-import { ShoppingCart, Trash2, Plus, X, Download } from 'lucide-react'
+import { ShoppingCart, Trash2, Plus, X, Download, Pencil } from 'lucide-react'
 
 type Item = { id: number; name: string; quantity: number | null; unit: string | null; category: string | null; source: string; storeId: number | null; isChecked: boolean; sortOrder: number; store: { id: number; name: string } | null }
 type StoreType = { id: number; name: string; sortOrder: number; assignedPerson: { name: string } | null }
@@ -47,6 +47,8 @@ export function ShoppingList({ items: initialItems, stores, people, ingredientCo
   const [items, setItems] = useState(initialItems)
   const [isPending, startTransition] = useTransition()
   const [notes, setNotes] = useState<string[]>([])
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editName, setEditName] = useState('')
 
   useEffect(() => { setItems(initialItems) }, [initialItems])
   const router = useRouter()
@@ -81,6 +83,25 @@ export function ShoppingList({ items: initialItems, stores, people, ingredientCo
     startTransition(async () => {
       await deleteShoppingItemAction(id)
     })
+  }
+
+  function startEdit(item: Item) {
+    setEditingId(item.id)
+    setEditName(item.name)
+  }
+
+  function saveEdit(id: number) {
+    const name = editName.trim()
+    setEditingId(null)
+    if (!name) return
+    setItems(prev => prev.map(i => i.id === id ? { ...i, name } : i))
+    startTransition(async () => {
+      await updateShoppingItemAction(id, { name })
+    })
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
   }
 
   async function handleExport() {
@@ -228,7 +249,10 @@ export function ShoppingList({ items: initialItems, stores, people, ingredientCo
 
       {unassigned.length > 0 && (
         <ItemGroup title="Unassigned" items={unassigned} stores={stores} people={people}
-          toggleCheck={toggleCheck} changeStore={changeStore} handleDelete={handleDelete} isPending={isPending} />
+          toggleCheck={toggleCheck} changeStore={changeStore} handleDelete={handleDelete}
+          editingId={editingId} editName={editName}
+          onStartEdit={startEdit} onEditNameChange={setEditName} onSaveEdit={saveEdit} onCancelEdit={cancelEdit}
+          isPending={isPending} />
       )}
 
       {byStore.filter(({ items }) => items.length > 0).map(({ store, items: storeItems }) => {
@@ -238,6 +262,8 @@ export function ShoppingList({ items: initialItems, stores, people, ingredientCo
             items={storeItems} stores={stores} people={people}
             toggleCheck={toggleCheck} changeStore={changeStore} handleDelete={handleDelete}
             onBFHAssign={isBFH ? handleBFHAssign : undefined}
+            editingId={editingId} editName={editName}
+            onStartEdit={startEdit} onEditNameChange={setEditName} onSaveEdit={saveEdit} onCancelEdit={cancelEdit}
             isPending={isPending} />
         )
       })}
@@ -255,11 +281,18 @@ interface ItemGroupProps {
   changeStore: (id: number, storeId: string) => void
   handleDelete: (id: number) => void
   onBFHAssign?: (itemId: number, personId: number) => void
+  editingId: number | null
+  editName: string
+  onStartEdit: (item: Item) => void
+  onEditNameChange: (name: string) => void
+  onSaveEdit: (id: number) => void
+  onCancelEdit: () => void
   isPending: boolean
 }
 
-function ItemGroup({ title, subtitle, items, stores, people, toggleCheck, changeStore, handleDelete, onBFHAssign, isPending }: ItemGroupProps) {
+function ItemGroup({ title, subtitle, items, stores, people, toggleCheck, changeStore, handleDelete, onBFHAssign, editingId, editName, onStartEdit, onEditNameChange, onSaveEdit, onCancelEdit, isPending }: ItemGroupProps) {
   const checkedCount = items.filter(i => i.isChecked).length
+  const inputRef = useRef<HTMLInputElement>(null)
 
   return (
     <Card>
@@ -275,20 +308,49 @@ function ItemGroup({ title, subtitle, items, stores, people, toggleCheck, change
       <CardContent className="space-y-1 pt-0">
         {items.map(item => (
           <div key={item.id} className="flex items-center gap-2 py-2 border-b border-border/40 last:border-0">
-            <Checkbox checked={item.isChecked} onCheckedChange={() => toggleCheck(item.id)} className="shrink-0" />
+            <Checkbox
+              checked={!!item.isChecked}
+              onCheckedChange={() => toggleCheck(item.id)}
+              className="shrink-0"
+            />
             <div className="flex-1 min-w-0">
-              <span className={cn('text-sm', item.isChecked && 'line-through text-muted-foreground')}>{item.name}</span>
-              {(item.quantity || item.unit) && (
+              {editingId === item.id ? (
+                <input
+                  ref={inputRef}
+                  autoFocus
+                  value={editName}
+                  onChange={e => onEditNameChange(e.target.value)}
+                  onBlur={() => onSaveEdit(item.id)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') { e.preventDefault(); onSaveEdit(item.id) }
+                    if (e.key === 'Escape') onCancelEdit()
+                  }}
+                  className="text-sm w-full border-b border-input bg-transparent outline-none py-0.5"
+                />
+              ) : (
+                <span className={cn('text-sm', item.isChecked && 'line-through text-muted-foreground')}>{item.name}</span>
+              )}
+              {(item.quantity || item.unit) && editingId !== item.id && (
                 <span className="text-xs text-muted-foreground ml-2">{item.quantity} {item.unit}</span>
               )}
             </div>
-            {item.category && (
+            {item.category && editingId !== item.id && (
               <Badge className={cn('text-xs shrink-0 hidden sm:inline-flex', CATEGORY_COLORS[item.category] ?? 'bg-muted text-muted-foreground')}>
                 {item.category}
               </Badge>
             )}
 
-            {onBFHAssign ? (
+            <Select value={item.storeId?.toString() ?? 'none'} onValueChange={v => changeStore(item.id, v)}>
+              <SelectTrigger className="h-7 w-28 sm:w-36 text-xs shrink-0">
+                <SelectValue placeholder="Store…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none"><span className="text-muted-foreground">No store</span></SelectItem>
+                {stores.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            {onBFHAssign && (
               <div className="flex gap-1 flex-wrap shrink-0">
                 {people.map(p => (
                   <button key={p.id} onClick={() => onBFHAssign(item.id, p.id)} disabled={isPending}
@@ -297,17 +359,12 @@ function ItemGroup({ title, subtitle, items, stores, people, toggleCheck, change
                   </button>
                 ))}
               </div>
-            ) : (
-              <Select value={item.storeId?.toString() ?? 'none'} onValueChange={v => changeStore(item.id, v)}>
-                <SelectTrigger className="h-7 w-28 sm:w-36 text-xs shrink-0">
-                  <SelectValue placeholder="Store…" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none"><span className="text-muted-foreground">No store</span></SelectItem>
-                  {stores.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
             )}
+
+            <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+              onClick={() => editingId === item.id ? onSaveEdit(item.id) : onStartEdit(item)}>
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
             <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive shrink-0" onClick={() => handleDelete(item.id)}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
