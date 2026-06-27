@@ -2,15 +2,13 @@
 
 import { useEffect, useState } from 'react'
 
-type LunchRecipe = { id: number; name: string; participants: string[] }
-type DinnerInfo = { name: string | null; chefs: string[] } | null
+type MealInfo = { name: string | null; chefs: string[] } | null
 
 interface Props {
-  todayDayNum: number | null
-  todayDateStr: string | null
+  weekday: string | null
   isValidDay: boolean
-  dinner: DinnerInfo
-  lunchRecipes: LunchRecipe[]
+  breakfast: MealInfo
+  dinner: MealInfo
 }
 
 // Change this to match the cottage location for weather
@@ -93,7 +91,7 @@ function shortTeamName(full: string) {
   return abbrevMap[full] ?? full.split(' ').slice(-1)[0]
 }
 
-export function DisplayClient({ todayDayNum, todayDateStr, isValidDay, dinner, lunchRecipes }: Props) {
+export function DisplayClient({ weekday, isValidDay, breakfast, dinner }: Props) {
   const [weather, setWeather] = useState<WeatherData | null>(null)
   const [jays, setJays] = useState<JaysData | null>(null)
   const [jaysLoading, setJaysLoading] = useState(true)
@@ -216,86 +214,67 @@ export function DisplayClient({ todayDayNum, todayDateStr, isValidDay, dinner, l
         {/* ── LEFT PANEL ── Menu */}
         <div className="flex flex-col" style={{ flex: '1 1 58%' }}>
           <div
-            className="flex flex-col h-full rounded-2xl p-8 overflow-hidden"
+            className="flex flex-col h-full rounded-2xl p-10 overflow-hidden"
             style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.15)' }}
           >
-            {/* Header */}
-            <div className="mb-5">
-              <p className="text-white/40 text-xs tracking-widest uppercase font-semibold mb-2">
-                Today at the Cottage
-              </p>
-              <h1 className="text-white font-bold leading-none" style={{ fontSize: '2.6rem' }}>
-                {todayDateStr ?? '—'}
-              </h1>
-              {todayDayNum !== null && (
-                <p className="text-emerald-300 text-xl mt-2 font-medium">
-                  Day {todayDayNum} of 8
-                </p>
-              )}
-            </div>
+            {/* Day of week */}
+            <h1 className="text-white font-bold mb-10 leading-none" style={{ fontSize: '4rem' }}>
+              {weekday ?? '—'}
+            </h1>
 
-            <div className="h-px mb-6" style={{ background: 'rgba(255,255,255,0.15)' }} />
-
-            {/* Lunch */}
-            <div className="mb-6">
-              <p className="text-white/40 text-xs tracking-widest uppercase font-semibold mb-4">
-                🥪 Lunch
-              </p>
-              {lunchRecipes.length === 0 ? (
-                <p className="text-white/30 italic text-lg">No lunch recipes added yet</p>
+            {/* Breakfast */}
+            <div className="flex-1">
+              <p className="text-white/40 text-xs tracking-widest uppercase font-semibold mb-4">Breakfast</p>
+              {!isValidDay ? (
+                <p className="text-white/30 italic text-lg">Trip dates not configured</p>
+              ) : breakfast ? (
+                <>
+                  <p className="text-white font-bold leading-tight mb-5" style={{ fontSize: '2.6rem' }}>
+                    {breakfast.name ?? 'TBD'}
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    {breakfast.chefs.map(chef => (
+                      <span
+                        key={chef}
+                        className="text-emerald-200 font-medium text-lg px-5 py-2 rounded-full"
+                        style={{ background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.3)' }}
+                      >
+                        {chef}
+                      </span>
+                    ))}
+                  </div>
+                </>
               ) : (
-                <div className="flex flex-col gap-3">
-                  {lunchRecipes.map(r => (
-                    <div
-                      key={r.id}
-                      className="flex items-center justify-between rounded-xl px-5 py-3"
-                      style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }}
-                    >
-                      <span className="text-white font-medium text-xl">{r.name}</span>
-                      {r.participants.length > 0 && (
-                        <span className="text-white/50 text-base ml-4 shrink-0">
-                          {r.participants.join(', ')}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                <p className="text-white/30 italic text-lg">No breakfast planned</p>
               )}
             </div>
 
-            <div className="h-px mb-6" style={{ background: 'rgba(255,255,255,0.15)' }} />
+            <div className="h-px my-8" style={{ background: 'rgba(255,255,255,0.2)' }} />
 
             {/* Dinner */}
             <div className="flex-1">
-              <p className="text-white/40 text-xs tracking-widest uppercase font-semibold mb-4">
-                🍽️ Dinner
-              </p>
+              <p className="text-white/40 text-xs tracking-widest uppercase font-semibold mb-4">Dinner</p>
               {!isValidDay ? (
                 <p className="text-white/30 italic text-lg">Trip dates not configured</p>
               ) : dinner ? (
-                <div>
-                  <h2
-                    className="text-white font-bold mb-5 leading-tight"
-                    style={{ fontSize: dinner.name && dinner.name.length > 30 ? '2rem' : '2.8rem' }}
-                  >
+                <>
+                  <p className="text-white font-bold leading-tight mb-5" style={{ fontSize: '2.6rem' }}>
                     {dinner.name ?? 'TBD'}
-                  </h2>
-                  {dinner.chefs.length > 0 && (
-                    <div className="flex flex-wrap gap-3">
-                      {dinner.chefs.map(chef => (
-                        <span
-                          key={chef}
-                          className="text-emerald-200 font-medium text-lg px-5 py-2 rounded-full"
-                          style={{ background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.3)' }}
-                        >
-                          👨‍🍳 {chef}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    {dinner.chefs.map(chef => (
+                      <span
+                        key={chef}
+                        className="text-emerald-200 font-medium text-lg px-5 py-2 rounded-full"
+                        style={{ background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.3)' }}
+                      >
+                        {chef}
+                      </span>
+                    ))}
+                  </div>
+                </>
               ) : (
-                <p className="text-white/30 italic text-lg">No dinner planned for today</p>
+                <p className="text-white/30 italic text-lg">No dinner planned</p>
               )}
             </div>
           </div>
