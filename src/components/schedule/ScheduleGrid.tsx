@@ -43,6 +43,7 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
   useEffect(() => { setSlotMap(initialSlotMap) }, [initialSlotMapJson])
   const [selected, setSelected] = useState<Selected | null>(null)
   const [hoveredCook, setHoveredCook] = useState<string | null>(null)
+  const [expandedKey, setExpandedKey] = useState<string | null>(null)
   const router = useRouter()
 
   const isScheduled = Object.keys(mealMap).length > 0
@@ -110,7 +111,7 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
 
   return (
     <div className="space-y-6">
-      {selected && (
+      {selected && !scheduleLocked && (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/40 bg-primary/5 px-4 py-2.5 text-sm">
           <span><span className="font-semibold">{selected.name}</span> selected — click another cook to trade slots.</span>
           <Button variant="ghost" size="sm" onClick={() => setSelected(null)} className="shrink-0 h-7">Cancel</Button>
@@ -196,10 +197,18 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
                         )}
                       >
                         {/* Overlay — sits above static content (z-10) but below interactive elements (z-20) */}
-                        {!isSkipped && !shoppingGenerated && (meal
-                          ? <Link href={`/meals/${meal.id}`} className="absolute inset-0 rounded-xl z-10" aria-label={meal.name ?? 'Edit meal'} />
-                          : <button className="absolute inset-0 rounded-xl z-10 cursor-pointer" onClick={() => handleEmptySlotClick(day, type)} aria-label="Add meal" />
-                        )}
+                        {!isSkipped && !shoppingGenerated && (meal ? (
+                          <>
+                            <Link href={`/meals/${meal.id}`} className="absolute inset-0 rounded-xl z-10 hidden md:block" aria-label={meal.name ?? 'Edit meal'} />
+                            <button
+                              className="absolute inset-0 rounded-xl z-10 md:hidden cursor-pointer"
+                              onClick={() => setExpandedKey(k => k === key ? null : key)}
+                              aria-label={expandedKey === key ? 'Hide ingredients' : 'Show ingredients'}
+                            />
+                          </>
+                        ) : (
+                          <button className="absolute inset-0 rounded-xl z-10 cursor-pointer" onClick={() => handleEmptySlotClick(day, type)} aria-label="Add meal" />
+                        ))}
 
                         {isEmpty ? (
                           <span className="text-[10px] text-muted-foreground self-center">{isBreakfast ? 'BF' : 'DIN'}</span>
@@ -241,7 +250,7 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
                                   {cooks.map(name => {
                                     const isSelected = selected?.slotKey === key && selected?.name === name
                                     const isHighlighted = hoveredCook === name
-                                    return scheduleLocked ? (
+                                    return !scheduleLocked ? (
                                       <button
                                         key={name}
                                         className="relative z-20"
@@ -265,9 +274,19 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
                                 </div>
                               )}
                               {hasIngredients && (
-                                <p className="text-xs text-muted-foreground">
-                                  {meal!.ingredients.length} ingredient{meal!.ingredients.length !== 1 ? 's' : ''}
-                                </p>
+                                expandedKey === key ? (
+                                  <ul className="mt-1 space-y-0.5">
+                                    {meal!.ingredients.map(ing => (
+                                      <li key={ing.id} className="text-[11px] text-muted-foreground leading-snug">
+                                        {ing.name}{ing.quantity != null ? ` — ${ing.quantity}${ing.unit ? ' ' + ing.unit : ''}` : ''}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <p className="text-xs text-muted-foreground">
+                                    {meal!.ingredients.length} ingredient{meal!.ingredients.length !== 1 ? 's' : ''}
+                                  </p>
+                                )
                               )}
                             </div>
                           </>
