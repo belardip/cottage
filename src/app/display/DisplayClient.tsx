@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 type MealInfo = { name: string | null; chefs: string[] } | null
 
 interface Props {
+  fontVariable: string
   weekday: string | null
   isValidDay: boolean
   breakfast: MealInfo
@@ -91,7 +92,7 @@ function shortTeamName(full: string) {
   return abbrevMap[full] ?? full.split(' ').slice(-1)[0]
 }
 
-export function DisplayClient({ weekday, isValidDay, breakfast, dinner }: Props) {
+export function DisplayClient({ fontVariable, weekday, isValidDay, breakfast, dinner }: Props) {
   const [weather, setWeather] = useState<WeatherData | null>(null)
   const [jays, setJays] = useState<JaysData | null>(null)
   const [jaysLoading, setJaysLoading] = useState(true)
@@ -212,69 +213,71 @@ export function DisplayClient({ weekday, isValidDay, breakfast, dinner }: Props)
       <div className="relative z-10 flex w-full h-full p-5 gap-5">
 
         {/* ── LEFT PANEL ── Menu */}
-        <div className="flex flex-col" style={{ flex: '1 1 58%' }}>
+        <div className={`flex flex-col ${fontVariable}`} style={{ flex: '1 1 58%' }}>
           <div
-            className="flex flex-col h-full rounded-2xl p-10 overflow-hidden"
+            className="flex flex-col h-full rounded-2xl px-12 py-10 overflow-hidden"
             style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.15)' }}
           >
             {/* Day of week */}
-            <h1 className="text-white font-bold mb-10 leading-none" style={{ fontSize: '4rem' }}>
+            <h1
+              className="text-white mb-10 leading-none"
+              style={{ fontFamily: 'var(--font-playfair)', fontSize: '5rem', fontWeight: 700, letterSpacing: '-0.01em' }}
+            >
               {weekday ?? '—'}
             </h1>
 
             {/* Breakfast */}
             <div className="flex-1">
-              <p className="text-white/40 text-xs tracking-widest uppercase font-semibold mb-4">Breakfast</p>
+              <p className="text-white/35 mb-5" style={{ fontSize: '0.7rem', letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+                Breakfast
+              </p>
               {!isValidDay ? (
-                <p className="text-white/30 italic text-lg">Trip dates not configured</p>
+                <p className="text-white/25 italic text-lg">Trip dates not configured</p>
               ) : breakfast ? (
                 <>
-                  <p className="text-white font-bold leading-tight mb-5" style={{ fontSize: '2.6rem' }}>
+                  <p
+                    className="text-white leading-tight mb-4"
+                    style={{ fontFamily: 'var(--font-playfair)', fontSize: '2.8rem', fontStyle: 'italic', fontWeight: 400 }}
+                  >
                     {breakfast.name ?? 'TBD'}
                   </p>
-                  <div className="flex flex-wrap gap-3">
-                    {breakfast.chefs.map(chef => (
-                      <span
-                        key={chef}
-                        className="text-emerald-200 font-medium text-lg px-5 py-2 rounded-full"
-                        style={{ background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.3)' }}
-                      >
-                        {chef}
-                      </span>
-                    ))}
-                  </div>
+                  <p className="text-white/45" style={{ fontSize: '1rem', letterSpacing: '0.08em' }}>
+                    {breakfast.chefs.join('  ·  ')}
+                  </p>
                 </>
               ) : (
-                <p className="text-white/30 italic text-lg">No breakfast planned</p>
+                <p className="text-white/25 italic">No breakfast planned</p>
               )}
             </div>
 
-            <div className="h-px my-8" style={{ background: 'rgba(255,255,255,0.2)' }} />
+            {/* Divider */}
+            <div className="flex items-center gap-4 my-8">
+              <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.2)' }} />
+              <span className="text-white/20" style={{ fontSize: '0.6rem', letterSpacing: '0.3em' }}>✦</span>
+              <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.2)' }} />
+            </div>
 
             {/* Dinner */}
             <div className="flex-1">
-              <p className="text-white/40 text-xs tracking-widest uppercase font-semibold mb-4">Dinner</p>
+              <p className="text-white/35 mb-5" style={{ fontSize: '0.7rem', letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+                Dinner
+              </p>
               {!isValidDay ? (
-                <p className="text-white/30 italic text-lg">Trip dates not configured</p>
+                <p className="text-white/25 italic text-lg">Trip dates not configured</p>
               ) : dinner ? (
                 <>
-                  <p className="text-white font-bold leading-tight mb-5" style={{ fontSize: '2.6rem' }}>
+                  <p
+                    className="text-white leading-tight mb-4"
+                    style={{ fontFamily: 'var(--font-playfair)', fontSize: '2.8rem', fontStyle: 'italic', fontWeight: 400 }}
+                  >
                     {dinner.name ?? 'TBD'}
                   </p>
-                  <div className="flex flex-wrap gap-3">
-                    {dinner.chefs.map(chef => (
-                      <span
-                        key={chef}
-                        className="text-emerald-200 font-medium text-lg px-5 py-2 rounded-full"
-                        style={{ background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.3)' }}
-                      >
-                        {chef}
-                      </span>
-                    ))}
-                  </div>
+                  <p className="text-white/45" style={{ fontSize: '1rem', letterSpacing: '0.08em' }}>
+                    {dinner.chefs.join('  ·  ')}
+                  </p>
                 </>
               ) : (
-                <p className="text-white/30 italic text-lg">No dinner planned</p>
+                <p className="text-white/25 italic">No dinner planned</p>
               )}
             </div>
           </div>

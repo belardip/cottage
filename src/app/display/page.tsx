@@ -1,7 +1,14 @@
 import { db } from '@/lib/db'
 import { DisplayClient } from './DisplayClient'
+import { Playfair_Display } from 'next/font/google'
 
 export const dynamic = 'force-dynamic'
+
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  variable: '--font-playfair',
+  display: 'swap',
+})
 
 export default async function DisplayPage() {
   const [setting, meals, cookSlots] = await Promise.all([
@@ -43,6 +50,7 @@ export default async function DisplayPage() {
 
   return (
     <DisplayClient
+      fontVariable={playfair.variable}
       weekday={weekday}
       isValidDay={isValidDay}
       breakfast={todayBreakfast ? { name: todayBreakfast.name, chefs: breakfastChefs } : null}
