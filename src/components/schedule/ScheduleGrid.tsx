@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { CalendarDays, RefreshCw, Shuffle } from 'lucide-react'
 
@@ -43,7 +44,7 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
   useEffect(() => { setSlotMap(initialSlotMap) }, [initialSlotMapJson])
   const [selected, setSelected] = useState<Selected | null>(null)
   const [hoveredCook, setHoveredCook] = useState<string | null>(null)
-  const [expandedKey, setExpandedKey] = useState<string | null>(null)
+  const [dialogMeal, setDialogMeal] = useState<{ id: number; name: string | null; ingredients: Ingredient[]; cooks: string[] } | null>(null)
   const router = useRouter()
 
   const isScheduled = Object.keys(mealMap).length > 0
@@ -201,14 +202,8 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
                           <button
                             className="absolute inset-0 rounded-xl z-10 cursor-pointer"
                             style={{ touchAction: 'manipulation' }}
-                            onClick={() => {
-                              if (window.matchMedia('(hover: none) and (pointer: coarse)').matches) {
-                                setExpandedKey(k => k === key ? null : key)
-                              } else {
-                                router.push(`/meals/${meal.id}`)
-                              }
-                            }}
-                            aria-label={meal.name ?? 'Edit meal'}
+                            onClick={() => setDialogMeal({ id: meal.id, name: meal.name, ingredients: meal.ingredients, cooks })}
+                            aria-label={meal.name ?? 'View meal'}
                           />
                         ) : (
                           <button
@@ -283,19 +278,9 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
                                 </div>
                               )}
                               {hasIngredients && (
-                                expandedKey === key ? (
-                                  <ul className="mt-1 space-y-0.5">
-                                    {meal!.ingredients.map(ing => (
-                                      <li key={ing.id} className="text-[11px] text-muted-foreground leading-snug">
-                                        {ing.name}{ing.quantity != null ? ` — ${ing.quantity}${ing.unit ? ' ' + ing.unit : ''}` : ''}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                ) : (
-                                  <p className="text-xs text-muted-foreground">
-                                    {meal!.ingredients.length} ingredient{meal!.ingredients.length !== 1 ? 's' : ''}
-                                  </p>
-                                )
+                                <p className="text-xs text-muted-foreground">
+                                  {meal!.ingredients.length} ingredient{meal!.ingredients.length !== 1 ? 's' : ''}
+                                </p>
                               )}
                             </div>
                           </>
@@ -331,6 +316,45 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
           <CookSummary slotMap={slotMap} mealMap={mealMap} hoveredCook={hoveredCook} onHoverCook={setHoveredCook} />
         </>
       )}
+
+      <Dialog open={dialogMeal !== null} onOpenChange={open => { if (!open) setDialogMeal(null) }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{dialogMeal?.name ?? 'Meal'}</DialogTitle>
+          </DialogHeader>
+          {dialogMeal && (
+            <div className="space-y-3">
+              {dialogMeal.cooks.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {dialogMeal.cooks.map(c => (
+                    <Badge key={c} variant="secondary">{c}</Badge>
+                  ))}
+                </div>
+              )}
+              {dialogMeal.ingredients.length > 0 ? (
+                <ul className="space-y-1">
+                  {dialogMeal.ingredients.map(ing => (
+                    <li key={ing.id} className="text-sm text-muted-foreground">
+                      {ing.name}{ing.quantity != null ? ` — ${ing.quantity}${ing.unit ? ' ' + ing.unit : ''}` : ''}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground italic">No ingredients added.</p>
+              )}
+              {!shoppingGenerated && (
+                <Link
+                  href={`/meals/${dialogMeal.id}`}
+                  className="block text-sm text-primary underline underline-offset-2 pt-1"
+                  onClick={() => setDialogMeal(null)}
+                >
+                  Edit meal →
+                </Link>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
