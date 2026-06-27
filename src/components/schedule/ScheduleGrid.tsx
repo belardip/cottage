@@ -198,21 +198,21 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
                         )}
                       >
                         {/* Overlay — sits above static content (z-10) but below interactive elements (z-20) */}
-                        {!isSkipped && !shoppingGenerated && (meal ? (
+                        {!isSkipped && (meal ? (
                           <button
                             className="absolute inset-0 rounded-xl z-10 cursor-pointer"
                             style={{ touchAction: 'manipulation' }}
                             onClick={() => setDialogMeal({ id: meal.id, name: meal.name, ingredients: meal.ingredients, cooks })}
                             aria-label={meal.name ?? 'View meal'}
                           />
-                        ) : (
+                        ) : (!shoppingGenerated && (
                           <button
                             className="absolute inset-0 rounded-xl z-10 cursor-pointer"
                             style={{ touchAction: 'manipulation' }}
                             onClick={() => handleEmptySlotClick(day, type)}
                             aria-label="Add meal"
                           />
-                        ))}
+                        )))}
 
                         {isEmpty ? (
                           <span className="text-[10px] text-muted-foreground self-center">{isBreakfast ? 'BF' : 'DIN'}</span>
