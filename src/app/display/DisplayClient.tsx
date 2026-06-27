@@ -1,0 +1,386 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+
+type LunchRecipe = { id: number; name: string; participants: string[] }
+type DinnerInfo = { name: string | null; chefs: string[] } | null
+
+interface Props {
+  todayDayNum: number | null
+  todayDateStr: string | null
+  isValidDay: boolean
+  dinner: DinnerInfo
+  lunchRecipes: LunchRecipe[]
+}
+
+// Change this to match the cottage location for weather
+const WEATHER_LOCATION = 'Dickie Lake, Ontario'
+
+type WeatherData = {
+  temp: string
+  desc: string
+  emoji: string
+  high: string
+  low: string
+}
+
+type JaysData = {
+  status: 'no-game' | 'Preview' | 'Live' | 'Final'
+  awayTeam: string
+  homeTeam: string
+  awayScore: number | null
+  homeScore: number | null
+  inning: string
+  venue?: string
+  isJaysAway: boolean
+}
+
+function getWeatherEmoji(code: number) {
+  if (code === 113) return '☀️'
+  if (code <= 116) return '⛅'
+  if (code <= 122) return '☁️'
+  if (code <= 260) return '🌫️'
+  if (code <= 299) return '🌦️'
+  if (code <= 321) return '🌧️'
+  if (code <= 377) return '❄️'
+  if (code <= 395) return '⛈️'
+  return '🌤️'
+}
+
+function shortTeamName(full: string) {
+  const abbrevMap: Record<string, string> = {
+    'Toronto Blue Jays': 'TOR',
+    'New York Yankees': 'NYY',
+    'New York Mets': 'NYM',
+    'Boston Red Sox': 'BOS',
+    'Tampa Bay Rays': 'TB',
+    'Baltimore Orioles': 'BAL',
+    'Chicago White Sox': 'CWS',
+    'Chicago Cubs': 'CHC',
+    'Minnesota Twins': 'MIN',
+    'Cleveland Guardians': 'CLE',
+    'Detroit Tigers': 'DET',
+    'Kansas City Royals': 'KC',
+    'Houston Astros': 'HOU',
+    'Seattle Mariners': 'SEA',
+    'Los Angeles Angels': 'LAA',
+    'Texas Rangers': 'TEX',
+    'Oakland Athletics': 'OAK',
+    'Atlanta Braves': 'ATL',
+    'Philadelphia Phillies': 'PHI',
+    'Miami Marlins': 'MIA',
+    'Washington Nationals': 'WSH',
+    'New York Giants': 'SF',
+    'San Francisco Giants': 'SF',
+    'Los Angeles Dodgers': 'LAD',
+    'San Diego Padres': 'SD',
+    'Colorado Rockies': 'COL',
+    'Arizona Diamondbacks': 'ARI',
+    'Milwaukee Brewers': 'MIL',
+    'St. Louis Cardinals': 'STL',
+    'Cincinnati Reds': 'CIN',
+    'Pittsburgh Pirates': 'PIT',
+  }
+  return abbrevMap[full] ?? full.split(' ').slice(-1)[0]
+}
+
+export function DisplayClient({ todayDayNum, todayDateStr, isValidDay, dinner, lunchRecipes }: Props) {
+  const [weather, setWeather] = useState<WeatherData | null>(null)
+  const [jays, setJays] = useState<JaysData | null>(null)
+  const [jaysLoading, setJaysLoading] = useState(true)
+
+  // Weather — refresh every 10 minutes
+  useEffect(() => {
+    async function fetchWeather() {
+      try {
+        const res = await fetch(
+          `https://wttr.in/${encodeURIComponent(WEATHER_LOCATION)}?format=j1`,
+          { cache: 'no-store' }
+        )
+        const data = await res.json()
+        const curr = data.current_condition[0]
+        const today = data.weather[0]
+        setWeather({
+          temp: curr.temp_C,
+          desc: curr.weatherDesc[0].value,
+          emoji: getWeatherEmoji(parseInt(curr.weatherCode)),
+          high: today.maxtempC,
+          low: today.mintempC,
+        })
+      } catch {}
+    }
+    fetchWeather()
+    const id = setInterval(fetchWeather, 10 * 60 * 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  // Blue Jays score — refresh every minute
+  useEffect(() => {
+    async function fetchJays() {
+      try {
+        const dateStr = new Date().toISOString().split('T')[0]
+        const res = await fetch(
+          `https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=141&hydrate=linescore&date=${dateStr}`,
+          { cache: 'no-store' }
+        )
+        const data = await res.json()
+
+        if (!data.dates?.length || !data.dates[0].games?.length) {
+          setJays({ status: 'no-game', awayTeam: '', homeTeam: '', awayScore: null, homeScore: null, inning: '', isJaysAway: false })
+          setJaysLoading(false)
+          return
+        }
+
+        const game = data.dates[0].games[0]
+        const away = game.teams.away
+        const home = game.teams.home
+        const abstractState = game.status.abstractGameState as string
+
+        let inning = ''
+        if (abstractState === 'Live' && game.linescore) {
+          const half = game.linescore.inningHalf === 'Top' ? '▲' : '▼'
+          inning = `${game.linescore.currentInningOrdinal} ${half}`
+        } else if (abstractState === 'Final') {
+          inning = 'Final'
+        } else if (game.gameDate) {
+          inning = new Date(game.gameDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
+        }
+
+        setJays({
+          status: abstractState as JaysData['status'],
+          awayTeam: away.team.name,
+          homeTeam: home.team.name,
+          awayScore: abstractState !== 'Preview' ? (away.score ?? null) : null,
+          homeScore: abstractState !== 'Preview' ? (home.score ?? null) : null,
+          inning,
+          venue: game.venue?.name,
+          isJaysAway: away.team.id === 141,
+        })
+      } catch {
+        setJays(null)
+      }
+      setJaysLoading(false)
+    }
+    fetchJays()
+    const id = setInterval(fetchJays, 60 * 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  const jaysWinning =
+    jays &&
+    jays.status !== 'no-game' &&
+    jays.awayScore !== null &&
+    jays.homeScore !== null &&
+    ((jays.isJaysAway && jays.awayScore > jays.homeScore) ||
+      (!jays.isJaysAway && jays.homeScore > jays.awayScore))
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex overflow-hidden"
+      style={{
+        backgroundImage:
+          'url(https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?w=1920&q=80)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
+      {/* Overlay */}
+      <div className="absolute inset-0 bg-black/45" />
+
+      {/* Layout */}
+      <div className="relative z-10 flex w-full h-full p-5 gap-5">
+
+        {/* ── LEFT PANEL ── Menu */}
+        <div className="flex flex-col" style={{ flex: '1 1 58%' }}>
+          <div
+            className="flex flex-col h-full rounded-2xl p-8 overflow-hidden"
+            style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.15)' }}
+          >
+            {/* Header */}
+            <div className="mb-5">
+              <p className="text-white/40 text-xs tracking-widest uppercase font-semibold mb-2">
+                Today at the Cottage
+              </p>
+              <h1 className="text-white font-bold leading-none" style={{ fontSize: '2.6rem' }}>
+                {todayDateStr ?? '—'}
+              </h1>
+              {todayDayNum !== null && (
+                <p className="text-emerald-300 text-xl mt-2 font-medium">
+                  Day {todayDayNum} of 8
+                </p>
+              )}
+            </div>
+
+            <div className="h-px mb-6" style={{ background: 'rgba(255,255,255,0.15)' }} />
+
+            {/* Lunch */}
+            <div className="mb-6">
+              <p className="text-white/40 text-xs tracking-widest uppercase font-semibold mb-4">
+                🥪 Lunch
+              </p>
+              {lunchRecipes.length === 0 ? (
+                <p className="text-white/30 italic text-lg">No lunch recipes added yet</p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {lunchRecipes.map(r => (
+                    <div
+                      key={r.id}
+                      className="flex items-center justify-between rounded-xl px-5 py-3"
+                      style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }}
+                    >
+                      <span className="text-white font-medium text-xl">{r.name}</span>
+                      {r.participants.length > 0 && (
+                        <span className="text-white/50 text-base ml-4 shrink-0">
+                          {r.participants.join(', ')}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="h-px mb-6" style={{ background: 'rgba(255,255,255,0.15)' }} />
+
+            {/* Dinner */}
+            <div className="flex-1">
+              <p className="text-white/40 text-xs tracking-widest uppercase font-semibold mb-4">
+                🍽️ Dinner
+              </p>
+              {!isValidDay ? (
+                <p className="text-white/30 italic text-lg">Trip dates not configured</p>
+              ) : dinner ? (
+                <div>
+                  <h2
+                    className="text-white font-bold mb-5 leading-tight"
+                    style={{ fontSize: dinner.name && dinner.name.length > 30 ? '2rem' : '2.8rem' }}
+                  >
+                    {dinner.name ?? 'TBD'}
+                  </h2>
+                  {dinner.chefs.length > 0 && (
+                    <div className="flex flex-wrap gap-3">
+                      {dinner.chefs.map(chef => (
+                        <span
+                          key={chef}
+                          className="text-emerald-200 font-medium text-lg px-5 py-2 rounded-full"
+                          style={{ background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.3)' }}
+                        >
+                          👨‍🍳 {chef}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-white/30 italic text-lg">No dinner planned for today</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ── RIGHT PANEL ── Widgets */}
+        <div className="flex flex-col gap-4" style={{ flex: '1 1 42%' }}>
+
+          {/* Weather */}
+          <div
+            className="rounded-2xl px-6 py-4 flex flex-col justify-center"
+            style={{ flex: '1 1 0', background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.15)' }}
+          >
+            <p className="text-white/40 text-xs tracking-widest uppercase font-semibold mb-2">
+              📍 {WEATHER_LOCATION}
+            </p>
+            {weather ? (
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-end gap-1">
+                    <span className="text-white font-bold" style={{ fontSize: '2.8rem', lineHeight: 1 }}>{weather.temp}°</span>
+                    <span className="text-white/40 mb-0.5">C</span>
+                  </div>
+                  <p className="text-white/60 text-base mt-0.5">{weather.desc}</p>
+                  <p className="text-white/30 text-sm mt-0.5">H: {weather.high}° · L: {weather.low}°</p>
+                </div>
+                <span style={{ fontSize: '3rem' }}>{weather.emoji}</span>
+              </div>
+            ) : (
+              <p className="text-white/30 text-sm">Loading weather…</p>
+            )}
+          </div>
+
+          {/* Blue Jays */}
+          <div
+            className="rounded-2xl px-6 py-4 flex flex-col justify-center"
+            style={{ flex: '1 1 0', background: 'rgba(0,51,160,0.35)', backdropFilter: 'blur(16px)', border: '1px solid rgba(99,163,255,0.25)' }}
+          >
+            <p className="text-blue-300/70 text-xs tracking-widest uppercase font-semibold mb-2">
+              ⚾ Toronto Blue Jays
+            </p>
+            {jaysLoading ? (
+              <p className="text-white/30 text-sm">Loading…</p>
+            ) : jays === null ? (
+              <p className="text-white/40 text-sm">Unable to load scores</p>
+            ) : jays.status === 'no-game' ? (
+              <p className="text-white/50 text-base">No game today</p>
+            ) : jays.status === 'Preview' ? (
+              <div>
+                <p className="text-white text-base font-medium">
+                  {shortTeamName(jays.awayTeam)} @ {shortTeamName(jays.homeTeam)}
+                </p>
+                <p className="text-blue-300 text-sm mt-0.5">{jays.inning}</p>
+                {jays.venue && <p className="text-white/30 text-xs mt-0.5">{jays.venue}</p>}
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div className="text-center" style={{ minWidth: '4rem' }}>
+                  <p className="text-white/50 text-xs uppercase tracking-wide mb-0.5">
+                    {shortTeamName(jays.awayTeam)}
+                  </p>
+                  <p
+                    className="text-white font-bold tabular-nums"
+                    style={{
+                      fontSize: '2.4rem',
+                      lineHeight: 1,
+                      color: jays.isJaysAway && jaysWinning ? '#86efac' : 'white',
+                    }}
+                  >
+                    {jays.awayScore ?? '—'}
+                  </p>
+                </div>
+                <p className="text-blue-300/60 text-xs font-medium">{jays.inning}</p>
+                <div className="text-center" style={{ minWidth: '4rem' }}>
+                  <p className="text-white/50 text-xs uppercase tracking-wide mb-0.5">
+                    {shortTeamName(jays.homeTeam)}
+                  </p>
+                  <p
+                    className="text-white font-bold tabular-nums"
+                    style={{
+                      fontSize: '2.4rem',
+                      lineHeight: 1,
+                      color: !jays.isJaysAway && jaysWinning ? '#86efac' : 'white',
+                    }}
+                  >
+                    {jays.homeScore ?? '—'}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Spotify */}
+          <div
+            className="rounded-2xl px-6 py-5 flex flex-col justify-center"
+            style={{ flex: '2 2 0', background: 'rgba(18,18,18,0.55)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.08)' }}
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <svg className="shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="#1DB954">
+                <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
+              </svg>
+              <p className="text-[#1DB954] text-xs tracking-widest uppercase font-semibold">Spotify</p>
+            </div>
+            <p className="text-white/35 text-lg italic">Nothing playing</p>
+            <p className="text-white/20 text-xs mt-1">Open Spotify on any device to cast</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
