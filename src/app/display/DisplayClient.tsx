@@ -228,7 +228,7 @@ export function DisplayClient({ fontVariable, weekday, isValidDay, breakfast, di
 
             {/* Breakfast */}
             <div className="flex-1">
-              <p className="text-white/35 mb-5" style={{ fontSize: '0.7rem', letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+              <p className="text-white/70 mb-5" style={{ fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase' }}>
                 Breakfast
               </p>
               {!isValidDay ? (
@@ -241,7 +241,7 @@ export function DisplayClient({ fontVariable, weekday, isValidDay, breakfast, di
                   >
                     {breakfast.name ?? 'TBD'}
                   </p>
-                  <p className="text-white/45" style={{ fontSize: '1rem', letterSpacing: '0.08em' }}>
+                  <p className="text-white/80" style={{ fontSize: '1.3rem', letterSpacing: '0.08em' }}>
                     {breakfast.chefs.join('  ·  ')}
                   </p>
                 </>
@@ -259,7 +259,7 @@ export function DisplayClient({ fontVariable, weekday, isValidDay, breakfast, di
 
             {/* Dinner */}
             <div className="flex-1">
-              <p className="text-white/35 mb-5" style={{ fontSize: '0.7rem', letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+              <p className="text-white/70 mb-5" style={{ fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase' }}>
                 Dinner
               </p>
               {!isValidDay ? (
@@ -272,7 +272,7 @@ export function DisplayClient({ fontVariable, weekday, isValidDay, breakfast, di
                   >
                     {dinner.name ?? 'TBD'}
                   </p>
-                  <p className="text-white/45" style={{ fontSize: '1rem', letterSpacing: '0.08em' }}>
+                  <p className="text-white/80" style={{ fontSize: '1.3rem', letterSpacing: '0.08em' }}>
                     {dinner.chefs.join('  ·  ')}
                   </p>
                 </>
