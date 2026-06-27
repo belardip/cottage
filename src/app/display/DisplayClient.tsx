@@ -24,6 +24,15 @@ type WeatherData = {
   low: string
 }
 
+type SpotifyData = {
+  isPlaying: boolean
+  trackName: string
+  artistName: string
+  albumArt: string | null
+  progressMs: number
+  durationMs: number
+} | null
+
 type JaysData = {
   status: 'no-game' | 'Preview' | 'Live' | 'Final'
   awayTeam: string
@@ -88,6 +97,7 @@ export function DisplayClient({ todayDayNum, todayDateStr, isValidDay, dinner, l
   const [weather, setWeather] = useState<WeatherData | null>(null)
   const [jays, setJays] = useState<JaysData | null>(null)
   const [jaysLoading, setJaysLoading] = useState(true)
+  const [spotify, setSpotify] = useState<SpotifyData>(null)
 
   // Weather — refresh every 10 minutes
   useEffect(() => {
@@ -163,6 +173,19 @@ export function DisplayClient({ todayDayNum, todayDateStr, isValidDay, dinner, l
     }
     fetchJays()
     const id = setInterval(fetchJays, 60 * 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  // Spotify now-playing — refresh every 10 seconds
+  useEffect(() => {
+    async function fetchSpotify() {
+      try {
+        const res = await fetch('/api/spotify/now-playing', { cache: 'no-store' })
+        if (res.ok) setSpotify(await res.json())
+      } catch {}
+    }
+    fetchSpotify()
+    const id = setInterval(fetchSpotify, 10 * 1000)
     return () => clearInterval(id)
   }, [])
 
@@ -367,17 +390,68 @@ export function DisplayClient({ todayDayNum, todayDateStr, isValidDay, dinner, l
 
           {/* Spotify */}
           <div
-            className="rounded-2xl px-6 py-5 flex flex-col justify-center"
+            className="rounded-2xl p-6 flex flex-col"
             style={{ flex: '2 2 0', background: 'rgba(18,18,18,0.55)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.08)' }}
           >
-            <div className="flex items-center gap-2 mb-3">
-              <svg className="shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="#1DB954">
+            <div className="flex items-center gap-2 mb-4">
+              <svg className="shrink-0" width="18" height="18" viewBox="0 0 24 24" fill="#1DB954">
                 <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
               </svg>
-              <p className="text-[#1DB954] text-xs tracking-widest uppercase font-semibold">Spotify</p>
+              <p className="text-[#1DB954] text-xs tracking-widest uppercase font-semibold">Now Playing</p>
             </div>
-            <p className="text-white/35 text-lg italic">Nothing playing</p>
-            <p className="text-white/20 text-xs mt-1">Open Spotify on any device to cast</p>
+
+            {!spotify ? (
+              <div className="flex-1 flex flex-col items-center justify-center gap-3">
+                <div className="rounded-2xl flex items-center justify-center" style={{ width: '120px', height: '120px', background: 'rgba(255,255,255,0.05)' }}>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="rgba(255,255,255,0.15)">
+                    <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                  </svg>
+                </div>
+                <p className="text-white/30 text-sm">Nothing playing</p>
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col">
+                {/* Album art + track info */}
+                <div className="flex gap-5 flex-1 items-center">
+                  {spotify.albumArt ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={spotify.albumArt}
+                      alt="Album art"
+                      className="rounded-xl object-cover shrink-0"
+                      style={{ width: '130px', height: '130px' }}
+                    />
+                  ) : (
+                    <div className="rounded-xl shrink-0 flex items-center justify-center" style={{ width: '130px', height: '130px', background: 'rgba(255,255,255,0.07)' }}>
+                      <svg width="40" height="40" viewBox="0 0 24 24" fill="rgba(255,255,255,0.2)">
+                        <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                      </svg>
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-white font-semibold leading-tight truncate" style={{ fontSize: '1.4rem' }}>
+                      {spotify.trackName}
+                    </p>
+                    <p className="text-white/50 text-base mt-1 truncate">{spotify.artistName}</p>
+                    <p className="text-white/25 text-xs mt-2">
+                      {spotify.isPlaying ? '▶ Playing' : '⏸ Paused'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                <div className="mt-4 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.12)' }}>
+                  <div
+                    className="h-1 rounded-full"
+                    style={{
+                      background: '#1DB954',
+                      width: spotify.durationMs > 0 ? `${Math.min(100, (spotify.progressMs / spotify.durationMs) * 100)}%` : '0%',
+                      transition: 'width 1s linear',
+                    }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
