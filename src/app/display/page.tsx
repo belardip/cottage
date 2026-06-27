@@ -17,13 +17,14 @@ export default async function DisplayPage() {
   let todayDateStr: string | null = null
 
   if (tripStartDate) {
-    const start = new Date(tripStartDate)
-    start.setHours(0, 0, 0, 0)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const diffDays = Math.round((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+    // Trip start is stored as UTC midnight — use UTC date components so TZ offset doesn't shift it
+    const startUtc = Date.UTC(tripStartDate.getUTCFullYear(), tripStartDate.getUTCMonth(), tripStartDate.getUTCDate())
+    // Today uses local (Eastern) date components — what day the user actually sees
+    const now = new Date()
+    const todayUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+    const diffDays = Math.round((todayUtc - startUtc) / (1000 * 60 * 60 * 24))
     todayDayNum = diffDays + 1
-    todayDateStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+    todayDateStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
   }
 
   const isValidDay = todayDayNum !== null && todayDayNum >= 1 && todayDayNum <= 8
