@@ -4,7 +4,7 @@ import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { generateScheduleAction, reshuffleScheduleAction, skipSlotAction, tradeCookAction } from '@/app/actions/schedule'
+import { generateScheduleAction, reshuffleScheduleAction, skipSlotAction, tradeCookAction, swapMealsAction } from '@/app/actions/schedule'
 import { createMealAction } from '@/app/actions/meals'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import { CalendarDays, RefreshCw, Shuffle } from 'lucide-react'
+import { ArrowLeftRight, CalendarDays, Shuffle } from 'lucide-react'
 
 type Ingredient = { id: number; name: string; quantity: number | null; unit: string | null }
 type MealMap = Record<string, { id: number; day: number; type: string; name: string | null; ingredients: Ingredient[] }>
@@ -28,6 +28,7 @@ interface ScheduleGridProps {
   skippedSlots: string[]
   dates: Record<number, string>
   shoppingGenerated?: boolean
+  todayDayNum: number | null
 }
 
 const DAYS = [1, 2, 3, 4, 5, 6, 7, 8]
@@ -35,7 +36,7 @@ const MEAL_TYPES = ['breakfast', 'dinner'] as const
 
 type Selected = { slotKey: string; name: string }
 
-export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked, skippedSlots: initialSkipped, dates, shoppingGenerated }: ScheduleGridProps) {
+export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked, skippedSlots: initialSkipped, dates, shoppingGenerated, todayDayNum }: ScheduleGridProps) {
   const [isPending, startTransition] = useTransition()
   const [skipped, setSkipped] = useState<string[]>(initialSkipped)
   const [slotMap, setSlotMap] = useState<SlotMap>(initialSlotMap)
@@ -44,7 +45,10 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
   useEffect(() => { setSlotMap(initialSlotMap) }, [initialSlotMapJson])
   const [selected, setSelected] = useState<Selected | null>(null)
   const [hoveredCook, setHoveredCook] = useState<string | null>(null)
-  const [dialogMeal, setDialogMeal] = useState<{ id: number; name: string | null; ingredients: Ingredient[]; cooks: string[] } | null>(null)
+  const [dialogMeal, setDialogMeal] = useState<{ id: number; name: string | null; ingredients: Ingredient[]; cooks: string[]; day: number; type: string } | null>(null)
+  const [swapMode, setSwapMode] = useState(false)
+  const [swapDialogOpen, setSwapDialogOpen] = useState(false)
+  const [swapFirst, setSwapFirst] = useState<{ day: number; type: string; name: string | null } | null>(null)
   const router = useRouter()
 
   const isScheduled = Object.keys(mealMap).length > 0
@@ -131,19 +135,17 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
             </p>
           )}
         </div>
-        <div className="flex gap-2">
-          {scheduleLocked ? (
-            <Button variant="outline" onClick={handleReshuffle} disabled={isPending} size="sm">
-              <RefreshCw className="h-4 w-4 mr-1.5" />
-              Reshuffle
-            </Button>
-          ) : (
-            <Button onClick={handleGenerate} disabled={isPending} size="sm">
-              <Shuffle className="h-4 w-4 mr-1.5" />
-              {isPending ? 'Generating…' : 'Generate Schedule'}
-            </Button>
-          )}
-        </div>
+        {scheduleLocked ? (
+          <Button variant="outline" onClick={() => { setSwapFirst(null); setSwapDialogOpen(true) }} disabled={isPending} size="sm">
+            <ArrowLeftRight className="h-4 w-4 mr-1.5" />
+            Swap Meals
+          </Button>
+        ) : (
+          <Button onClick={handleGenerate} disabled={isPending} size="sm">
+            <Shuffle className="h-4 w-4 mr-1.5" />
+            {isPending ? 'Generating…' : 'Generate Schedule'}
+          </Button>
+        )}
       </div>
 
       {!isScheduled && !scheduleLocked && (
@@ -204,7 +206,7 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
                       <button
                         className="absolute inset-0 rounded-xl z-10 cursor-pointer"
                         style={{ touchAction: 'manipulation' }}
-                        onClick={() => setDialogMeal({ id: meal.id, name: meal.name, ingredients: meal.ingredients, cooks })}
+                        onClick={() => { setSwapMode(false); setDialogMeal({ id: meal.id, name: meal.name, ingredients: meal.ingredients, cooks, day, type }) }}
                         aria-label={meal.name ?? 'View meal'}
                       />
                     ) : (!shoppingGenerated && (
@@ -317,12 +319,14 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
         </>
       )}
 
-      <Dialog open={dialogMeal !== null} onOpenChange={open => { if (!open) setDialogMeal(null) }}>
+      <Dialog open={dialogMeal !== null} onOpenChange={open => { if (!open) { setDialogMeal(null); setSwapMode(false) } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{dialogMeal?.name ?? 'Meal'}</DialogTitle>
+            <DialogTitle>
+              {swapMode ? `Swap "${dialogMeal?.name}" with…` : (dialogMeal?.name ?? 'Meal')}
+            </DialogTitle>
           </DialogHeader>
-          {dialogMeal && (
+          {dialogMeal && !swapMode && (
             <div className="space-y-3">
               {dialogMeal.cooks.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
@@ -342,16 +346,114 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
               ) : (
                 <p className="text-sm text-muted-foreground italic">No ingredients added.</p>
               )}
-              {!shoppingGenerated && (
-                <Link
-                  href={`/meals/${dialogMeal.id}`}
-                  className="block text-sm text-primary underline underline-offset-2 pt-1"
-                  onClick={() => setDialogMeal(null)}
-                >
-                  Edit meal →
-                </Link>
-              )}
+              <div className="flex items-center gap-3 pt-1">
+                {scheduleLocked && todayDayNum !== null && dialogMeal.day >= todayDayNum && (
+                  <Button variant="outline" size="sm" onClick={() => setSwapMode(true)}>
+                    <ArrowLeftRight className="h-3.5 w-3.5 mr-1.5" />
+                    Swap meal
+                  </Button>
+                )}
+                {!shoppingGenerated && (
+                  <Link
+                    href={`/meals/${dialogMeal.id}`}
+                    className="text-sm text-primary underline underline-offset-2"
+                    onClick={() => setDialogMeal(null)}
+                  >
+                    Edit →
+                  </Link>
+                )}
+              </div>
             </div>
+          )}
+          {dialogMeal && swapMode && (() => {
+            const candidates = Object.values(mealMap).filter(m =>
+              m.type === dialogMeal.type &&
+              m.day !== dialogMeal.day &&
+              todayDayNum !== null && m.day >= todayDayNum
+            ).sort((a, b) => a.day - b.day)
+            return candidates.length === 0 ? (
+              <p className="text-sm text-muted-foreground italic">No other future {dialogMeal.type} meals to swap with.</p>
+            ) : (
+              <ul className="space-y-1">
+                {candidates.map(m => (
+                  <li key={m.id}>
+                    <button
+                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-muted transition-colors text-sm"
+                      disabled={isPending}
+                      onClick={() => {
+                        startTransition(async () => {
+                          const result = await swapMealsAction(dialogMeal.day, dialogMeal.type, m.day)
+                          if (result?.error) { toast.error(result.error) }
+                          else { setDialogMeal(null); setSwapMode(false); router.refresh() }
+                        })
+                      }}
+                    >
+                      <span className="font-medium">{dates[m.day]?.split(', ')[0]}</span>
+                      <span className="text-muted-foreground ml-2">{m.name}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Top-level Swap Meals dialog */}
+      <Dialog open={swapDialogOpen} onOpenChange={open => { if (!open) { setSwapDialogOpen(false); setSwapFirst(null) } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {swapFirst ? `Swap with…` : 'Pick a meal to swap'}
+            </DialogTitle>
+          </DialogHeader>
+          {(() => {
+            const futureMeals = Object.values(mealMap)
+              .filter(m => todayDayNum !== null && m.day >= todayDayNum)
+              .sort((a, b) => a.day - b.day || a.type.localeCompare(b.type))
+
+            const candidates = swapFirst
+              ? futureMeals.filter(m => m.type === swapFirst.type && m.day !== swapFirst.day)
+              : futureMeals
+
+            if (candidates.length === 0) {
+              return <p className="text-sm text-muted-foreground italic">No eligible meals found.</p>
+            }
+
+            return (
+              <ul className="space-y-1 max-h-80 overflow-y-auto">
+                {candidates.map(m => (
+                  <li key={m.id}>
+                    <button
+                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-muted transition-colors"
+                      disabled={isPending}
+                      onClick={() => {
+                        if (!swapFirst) {
+                          setSwapFirst({ day: m.day, type: m.type, name: m.name })
+                        } else {
+                          startTransition(async () => {
+                            const result = await swapMealsAction(swapFirst.day, swapFirst.type, m.day)
+                            if (result?.error) { toast.error(result.error) }
+                            else { setSwapDialogOpen(false); setSwapFirst(null); router.refresh() }
+                          })
+                        }
+                      }}
+                    >
+                      <span className="text-[11px] font-bold uppercase tracking-widest mr-2 text-muted-foreground">
+                        {m.type === 'breakfast' ? 'BF' : 'DIN'}
+                      </span>
+                      <span className="text-xs font-semibold">{dates[m.day]?.split(', ')[0]}</span>
+                      <span className="text-sm text-muted-foreground ml-2">{m.name}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )
+          })()}
+          {swapFirst && (
+            <Button variant="ghost" size="sm" className="mt-1 w-full" onClick={() => setSwapFirst(null)}>
+              ← Back
+            </Button>
           )}
         </DialogContent>
       </Dialog>

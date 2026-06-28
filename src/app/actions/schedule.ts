@@ -99,6 +99,25 @@ export async function tradeCookAction(
   return { success: true }
 }
 
+export async function swapMealsAction(dayA: number, type: string, dayB: number) {
+  await requireAuth()
+  const setting = await db.setting.findFirst()
+  if (!setting?.scheduleLocked) return { error: 'Schedule is not locked.' }
+
+  // Swap meals (use day 999 as temp to avoid unique constraint collisions)
+  await db.$executeRawUnsafe(`UPDATE meals SET day=999 WHERE day=? AND type=?`, dayA, type)
+  await db.$executeRawUnsafe(`UPDATE meals SET day=? WHERE day=? AND type=?`, dayA, dayB, type)
+  await db.$executeRawUnsafe(`UPDATE meals SET day=? WHERE day=999 AND type=?`, dayB, type)
+
+  // Swap cook slots
+  await db.$executeRawUnsafe(`UPDATE cook_slots SET day=999 WHERE day=? AND type=?`, dayA, type)
+  await db.$executeRawUnsafe(`UPDATE cook_slots SET day=? WHERE day=? AND type=?`, dayA, dayB, type)
+  await db.$executeRawUnsafe(`UPDATE cook_slots SET day=? WHERE day=999 AND type=?`, dayB, type)
+
+  revalidatePath('/schedule')
+  return { success: true }
+}
+
 export async function skipSlotAction(day: number, type: string, skipped: boolean) {
   await requireAuth()
   const setting = await db.setting.findFirst()

@@ -26,6 +26,14 @@ export default async function SchedulePage() {
 
   const tripStartDate = setting?.tripStartDate ?? null
   const scheduleLocked = setting?.scheduleLocked ?? false
+
+  let todayDayNum: number | null = null
+  if (tripStartDate) {
+    const startUtc = Date.UTC(tripStartDate.getUTCFullYear(), tripStartDate.getUTCMonth(), tripStartDate.getUTCDate())
+    const now = new Date()
+    const todayUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+    todayDayNum = Math.round((todayUtc - startUtc) / (1000 * 60 * 60 * 24)) + 1
+  }
   const skippedSlots: string[] = JSON.parse(setting?.skippedSlots ?? '[]')
   const shoppingGenerated = generatedCount > 0
 
@@ -52,6 +60,7 @@ export default async function SchedulePage() {
         skippedSlots={skippedSlots}
         dates={dates}
         shoppingGenerated={shoppingGenerated}
+        todayDayNum={todayDayNum}
       />
       <LunchSection lunchRecipes={lunchRecipes} people={people} shoppingGenerated={shoppingGenerated} />
     </>
