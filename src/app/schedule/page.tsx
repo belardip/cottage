@@ -2,6 +2,8 @@ import { db } from '@/lib/db'
 import { ScheduleGrid } from '@/components/schedule/ScheduleGrid'
 import { LunchSection } from '@/components/schedule/LunchSection'
 
+export const dynamic = 'force-dynamic'
+
 export default async function SchedulePage() {
   const [setting, meals, cookSlots, people, lunchRecipes, generatedCount] = await Promise.all([
     db.setting.findFirst(),
