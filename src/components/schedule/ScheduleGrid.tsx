@@ -407,7 +407,7 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
           </DialogHeader>
           {(() => {
             const futureMeals = Object.values(mealMap)
-              .filter(m => todayDayNum !== null && m.day >= todayDayNum)
+              .filter(m => todayDayNum !== null && m.day > todayDayNum)
               .sort((a, b) => a.day - b.day)
             if (futureMeals.length === 0) return <p className="text-sm text-muted-foreground italic">No upcoming meals.</p>
             const groups = [
