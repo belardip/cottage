@@ -227,8 +227,8 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
                           <span className={cn(
                             'text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-md',
                             isBreakfast
-                              ? 'bg-accent/20 text-amber-800 dark:text-amber-300'
-                              : 'bg-primary/12 text-primary'
+                              ? 'bg-accent/15 text-accent-foreground'
+                              : 'bg-primary/10 text-primary'
                           )}>
                             {isBreakfast ? 'BF' : 'DIN'}
                           </span>
@@ -407,7 +407,7 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
           </DialogHeader>
           {(() => {
             const futureMeals = Object.values(mealMap)
-              .filter(m => todayDayNum !== null && m.day > todayDayNum)
+              .filter(m => todayDayNum !== null && m.day >= todayDayNum)
               .sort((a, b) => a.day - b.day)
             if (futureMeals.length === 0) return <p className="text-sm text-muted-foreground italic">No upcoming meals.</p>
             const groups = [
