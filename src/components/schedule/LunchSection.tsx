@@ -7,18 +7,13 @@ import { Plus, Trash2, ExternalLink, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
-import { createLunchRecipeAction, deleteLunchRecipeAction, updateLunchRecipeAction, updateLunchPeopleAction } from '@/app/actions/lunch'
+import { createLunchRecipeAction, deleteLunchRecipeAction, updateLunchRecipeAction } from '@/app/actions/lunch'
 import { cn } from '@/lib/utils'
 
-type Person = { id: number; name: string }
 type LunchIngredient = { id: number }
 type LunchRecipe = { id: number; name: string | null; recipeUrl: string | null; peopleIds: string; ingredients: LunchIngredient[] }
 
-function parsePeopleIds(json: string): number[] {
-  try { return JSON.parse(json) as number[] } catch { return [] }
-}
-
-export function LunchSection({ lunchRecipes: initial, people, shoppingGenerated }: { lunchRecipes: LunchRecipe[]; people: Person[]; shoppingGenerated?: boolean }) {
+export function LunchSection({ lunchRecipes: initial, shoppingGenerated }: { lunchRecipes: LunchRecipe[]; shoppingGenerated?: boolean }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [recipes, setRecipes] = useState(initial)
@@ -55,15 +50,6 @@ export function LunchSection({ lunchRecipes: initial, people, shoppingGenerated 
     setEditingName(null)
   }
 
-  function togglePerson(recipe: LunchRecipe, personId: number) {
-    const current = parsePeopleIds(recipe.peopleIds)
-    const next = current.includes(personId) ? current.filter(id => id !== personId) : [...current, personId]
-    setRecipes(r => r.map(x => x.id === recipe.id ? { ...x, peopleIds: JSON.stringify(next) } : x))
-    startTransition(async () => {
-      await updateLunchPeopleAction(recipe.id, next)
-    })
-  }
-
   return (
     <div className="mt-10 pt-8 border-t">
       <div className="flex items-center justify-between mb-4">
@@ -87,7 +73,6 @@ export function LunchSection({ lunchRecipes: initial, people, shoppingGenerated 
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {recipes.map(recipe => {
-            const assignedIds = parsePeopleIds(recipe.peopleIds)
             return (
               <Card key={recipe.id}>
                 <CardContent className="pt-4 space-y-3">
@@ -109,25 +94,6 @@ export function LunchSection({ lunchRecipes: initial, people, shoppingGenerated 
                       {recipe.name ?? <span className="text-muted-foreground italic font-normal">{shoppingGenerated ? 'Untitled' : 'Untitled — click to name'}</span>}
                     </div>
                   )}
-
-                  <div className="flex flex-wrap gap-1.5">
-                    {people.map(p => {
-                      const assigned = assignedIds.includes(p.id)
-                      return (
-                        <button
-                          key={p.id}
-                          onClick={() => togglePerson(recipe, p.id)}
-                          className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${
-                            assigned
-                              ? 'bg-primary text-primary-foreground border-primary'
-                              : 'text-muted-foreground border-border hover:border-foreground hover:text-foreground'
-                          }`}
-                        >
-                          {p.name}
-                        </button>
-                      )
-                    })}
-                  </div>
 
                   <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
                     <span>{recipe.ingredients.length} ingredient{recipe.ingredients.length !== 1 ? 's' : ''}</span>

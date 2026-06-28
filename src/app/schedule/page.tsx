@@ -62,7 +62,7 @@ export default async function SchedulePage() {
         shoppingGenerated={shoppingGenerated}
         todayDayNum={todayDayNum}
       />
-      {!scheduleLocked && <LunchSection lunchRecipes={lunchRecipes} people={people} shoppingGenerated={shoppingGenerated} />}
+      {!scheduleLocked && <LunchSection lunchRecipes={lunchRecipes} shoppingGenerated={shoppingGenerated} />}
     </>
   )
 }
