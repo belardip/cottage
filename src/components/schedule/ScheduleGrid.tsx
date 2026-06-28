@@ -403,58 +403,52 @@ export function ScheduleGrid({ mealMap, slotMap: initialSlotMap, scheduleLocked,
       <Dialog open={swapDialogOpen} onOpenChange={open => { if (!open) { setSwapDialogOpen(false); setSwapFirst(null) } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>
-              {swapFirst ? `Swap with…` : 'Pick a meal to swap'}
-            </DialogTitle>
+            <DialogTitle>Swap Meals</DialogTitle>
           </DialogHeader>
           {(() => {
             const futureMeals = Object.values(mealMap)
               .filter(m => todayDayNum !== null && m.day >= todayDayNum)
               .sort((a, b) => a.day - b.day || a.type.localeCompare(b.type))
-
-            const candidates = swapFirst
-              ? futureMeals.filter(m => m.type === swapFirst.type && m.day !== swapFirst.day)
-              : futureMeals
-
-            if (candidates.length === 0) {
-              return <p className="text-sm text-muted-foreground italic">No eligible meals found.</p>
-            }
-
+            if (futureMeals.length === 0) return <p className="text-sm text-muted-foreground italic">No upcoming meals.</p>
             return (
               <ul className="space-y-1 max-h-80 overflow-y-auto">
-                {candidates.map(m => (
-                  <li key={m.id}>
-                    <button
-                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-muted transition-colors"
-                      disabled={isPending}
-                      onClick={() => {
-                        if (!swapFirst) {
-                          setSwapFirst({ day: m.day, type: m.type, name: m.name })
-                        } else {
-                          startTransition(async () => {
-                            const result = await swapMealsAction(swapFirst.day, swapFirst.type, m.day)
-                            if (result?.error) { toast.error(result.error) }
-                            else { setSwapDialogOpen(false); setSwapFirst(null); router.refresh() }
-                          })
-                        }
-                      }}
-                    >
-                      <span className="text-[11px] font-bold uppercase tracking-widest mr-2 text-muted-foreground">
-                        {m.type === 'breakfast' ? 'BF' : 'DIN'}
-                      </span>
-                      <span className="text-xs font-semibold">{dates[m.day]?.split(', ')[0]}</span>
-                      <span className="text-sm text-muted-foreground ml-2">{m.name}</span>
-                    </button>
-                  </li>
-                ))}
+                {futureMeals.map(m => {
+                  const isSelected = swapFirst?.day === m.day && swapFirst?.type === m.type
+                  const isCompatible = swapFirst && m.type === swapFirst.type && !isSelected
+                  return (
+                    <li key={m.id}>
+                      <button
+                        className={cn(
+                          'w-full text-left px-3 py-2 rounded-lg transition-colors',
+                          isSelected ? 'bg-primary text-primary-foreground' : 'hover:bg-muted',
+                          swapFirst && !isCompatible && !isSelected ? 'opacity-30 cursor-default' : ''
+                        )}
+                        disabled={isPending || (!!swapFirst && !isCompatible && !isSelected)}
+                        onClick={() => {
+                          if (isSelected) { setSwapFirst(null); return }
+                          if (!swapFirst) { setSwapFirst({ day: m.day, type: m.type, name: m.name }); return }
+                          if (isCompatible) {
+                            startTransition(async () => {
+                              const result = await swapMealsAction(swapFirst.day, swapFirst.type, m.day)
+                              if (result?.error) toast.error(result.error)
+                              else { setSwapDialogOpen(false); setSwapFirst(null); router.refresh() }
+                            })
+                          }
+                        }}
+                      >
+                        <span className={cn('text-[10px] font-bold uppercase tracking-widest mr-2', isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
+                          {m.type === 'breakfast' ? 'BF' : 'DIN'}
+                        </span>
+                        <span className="text-xs font-semibold">{dates[m.day]?.split(', ')[0]}</span>
+                        <span className={cn('text-sm ml-2', isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground')}>{m.name}</span>
+                      </button>
+                    </li>
+                  )
+                })}
               </ul>
             )
           })()}
-          {swapFirst && (
-            <Button variant="ghost" size="sm" className="mt-1 w-full" onClick={() => setSwapFirst(null)}>
-              ← Back
-            </Button>
-          )}
+          {swapFirst && <p className="text-xs text-muted-foreground pt-1">"{swapFirst.name}" selected — tap another {swapFirst.type} to swap.</p>}
         </DialogContent>
       </Dialog>
     </div>
